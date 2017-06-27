@@ -1,0 +1,80 @@
+	/**
+	 * readObjectFromFile
+	 *
+	 * @param theClass Class
+	 * @param aFilename String
+	 * @return Object
+	 */
+	public static Object readObjectFromFile( Class expectedClass,
+											 String aFilename )
+	{
+		FileInputStream fileinput = null;
+		ObjectInputStream input = null;
+		Object anObject = null;
+		try
+		{
+			fileinput = new FileInputStream( aFilename );
+			input = new ObjectInputStream( fileinput );
+			anObject = input.readObject();
+			if ( !anObject.getClass().equals( expectedClass ) )
+			{
+				throw new ClassNotFoundException();
+			}
+		}
+		catch ( FileNotFoundException exception )
+		{
+			throw new IllegalArgumentException(
+				ERROR_OPENING_FILE + aFilename );
+		}
+		catch ( IOException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_CREATING_OBJECT_STREAM + aFilename
+				);
+		}
+		catch ( ClassNotFoundException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_STREAM_NOT_COLLECTION + aFilename );
+		}
+		finally
+		{
+			try
+			{
+				input.close();
+			}
+			catch ( IOException exception )
+			{
+				throw new SeriousErrorException(
+					ERROR_STREAM_NOT_CLOSED + aFilename );
+			}
+		}
+		return anObject;
+
+	}
+
+	public static void writeObjectToFile( Object anObject,
+										  String aFilename )
+	{
+
+		try
+		{
+			FileOutputStream fileoutput = new FileOutputStream(
+				aFilename );
+			ObjectOutputStream output = new ObjectOutputStream( fileoutput );
+			output.writeObject( anObject );
+			output.close();
+		}
+		catch ( FileNotFoundException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_OPENING_FILE + aFilename );
+		}
+		catch ( IOException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_CREATING_OBJECT_STREAM + aFilename );
+		}
+
+		return;
+	}

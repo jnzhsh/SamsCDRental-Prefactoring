@@ -1,0 +1,6687 @@
+#### .
+#### .\com
+#### .\com\samscdrental
+#### .\com\samscdrental\configuration
+
+****Configuration.java
+
+package com.samscdrental.configuration;
+
+public class Configuration
+{
+	static public Configuration getInstance()
+	{
+		if ( theInstance == null )
+		{
+			theInstance = new Configuration();
+		}
+		return theInstance;
+
+	}
+
+	public DataAccessConfiguration getDataAccessConfiguration()
+	{
+		DataAccessConfiguration dac = new DataAccessConfiguration();
+		// Could read from file
+		dac.dataFilename = DATA_ACCESS_DATA_FILENAME;
+		return dac;
+	}
+
+	public ReportConfiguration getReportConfiguration()
+	{
+		ReportConfiguration rc = new ReportConfiguration();
+		// Could read this value from a file
+		rc.printFilename = REPORT_PRINTER_FILENAME;
+		return rc;
+	}
+
+	private static Configuration theInstance;
+
+	private Configuration()
+	{
+
+	}
+
+	private static String DATA_ACCESS_DATA_FILENAME =
+		"c:/temp/StoreCollections.dat";
+	private static String REPORT_PRINTER_FILENAME =
+		"c:/temp/printer.txt";
+
+}
+
+****DataAccessConfiguration.java
+
+package com.samscdrental.configuration;
+
+public class DataAccessConfiguration
+{
+	public String dataFilename;
+}
+
+****ReportConfiguration.java
+
+package com.samscdrental.configuration;
+
+public class ReportConfiguration
+{
+	public String printFilename;
+}
+#### .\com\samscdrental\controller
+
+****MaintenanceOperations.java
+
+package com.samscdrental.controller;
+
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.importexport.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+public class MaintenanceOperations
+{
+	static public MaintenanceOperations getInstance()
+	{
+		if ( theInstance == null )
+		{
+			theInstance = new MaintenanceOperations();
+		}
+		return theInstance;
+
+	}
+
+	public void collectionsInitialize(
+		String customerFilename, String cdDiscFilename,
+		String cdReleaseFilename ) throws ImportFormatDeviation,
+		ImportFileDeviation
+	{
+		CustomerDataAccesstExport customerImportExport =
+			new CustomerDataAccesstExport(
+			collections.theCustomerDataAccess );
+		customerImportExport.
+			addCustomersFromFile( customerFilename );
+		CDReleaseDataAccessImportExport cdReleaseImportExport =
+			new CDReleaseDataAccessImportExport(
+			collections.theCDReleaseDataAccess );
+		cdReleaseImportExport.
+			addCDReleasesFromFile( cdReleaseFilename );
+		CDDiscDataAccessImportExport discImportExport =
+			new CDDiscDataAccessImportExport(
+			collections.theCDDiscDataAccess );
+		discImportExport.addCDDiscsFromFile( cdDiscFilename );
+		return;
+	}
+
+	private MaintenanceOperations()
+	{
+	}
+
+	private static MaintenanceOperations theInstance = null;
+	private StoreDataAccess collections = StoreDataAccess.getInstance();
+
+}
+
+****RentalOperations.java
+
+package com.samscdrental.controller;
+
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.model.*;
+import com.samscdrental.model.adt.*;
+import com.samscdrental.model.dto.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class RentalOperations
+{
+	// Error messages
+
+	static public RentalOperations getInstance()
+	{
+		if ( theInstance == null )
+		{
+			theInstance = new RentalOperations();
+		}
+		return theInstance;
+
+	}
+
+	/**
+	 * checkinCDDisc
+	 *
+	 * @param aPhysicalID PhysicalID
+	 */
+	public void checkinCDDisc( PhysicalID aPhysicalID ) throws CheckInDeviation,
+		LateReturnDeviation
+	{
+		CDDisc aCDDisc = collections.theCDDiscDataAccess.
+			findByPhysicalID( aPhysicalID );
+		if ( aCDDisc != null )
+		{
+			aCDDisc.endRental();
+		}
+		else
+		{
+			throw new CheckInDeviation( ERROR_CD_DISC_NOT_IN_COLLECTION );
+		}
+	}
+
+	/**
+	 * isCDDiscRented
+	 *
+	 * @param aPhysicalID PhysicalID
+	 * @return boolean
+	 */
+	public boolean isCDDiscRented( PhysicalID aPhysicalID ) throws
+		StatusDeviation
+	{
+		CDDisc aCDDisc = collections.theCDDiscDataAccess.
+			findByPhysicalID( aPhysicalID );
+		if ( aCDDisc != null )
+		{
+			return ( aCDDisc.isRented() );
+		}
+		else
+		{
+			throw new StatusDeviation( ERROR_CD_DISC_NOT_IN_COLLECTION );
+
+		}
+	}
+
+	/**
+	 * checkoutCDDisc
+	 *
+	 * @param anObject PhysicalID
+	 */
+	public RentalContractDTO checkoutCDDisc( PhysicalID aPhysicalID,
+											 CustomerID aCustomerID ) throws
+		CheckOutDeviation
+	{
+		CDDisc aCDDisc = collections.theCDDiscDataAccess.
+			findByPhysicalID( aPhysicalID );
+		Customer aCustomer = collections.theCustomerDataAccess.
+			findByCustomerID( aCustomerID );
+		if ( aCDDisc == null )
+		{
+			throw new CheckOutDeviation(
+				ERROR_CD_DISC_NOT_IN_COLLECTION );
+		}
+		if ( aCustomer == null )
+		{
+			throw new CheckOutDeviation(
+				ERROR_CUSTOMER_NOT_IN_COLLECTION );
+		}
+		return aCDDisc.startRental( aCustomer );
+	}
+
+	/**
+	 * dispose
+	 */
+	public void dispose()
+	{
+		collections.dispose();
+	}
+
+	private static final String ERROR_CD_DISC_NOT_IN_COLLECTION =
+		"CDDisc PhysicalID not in collection";
+	private static final String ERROR_CUSTOMER_NOT_IN_COLLECTION =
+		"Customer ID not in collection";
+
+	private StoreDataAccess collections = StoreDataAccess.getInstance();
+
+	private RentalOperations()
+	{
+
+	}
+
+	private static RentalOperations theInstance = null;
+
+}
+
+****ReportOperations.java
+
+package com.samscdrental.controller;
+
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.model.*;
+import com.samscdrental.model.adt.*;
+import com.samscdrental.model.dto.*;
+import com.samscdrental.reports.*;
+
+public class ReportOperations
+{
+	static public ReportOperations getInstance()
+	{
+		if ( theInstance == null )
+		{
+			theInstance = new ReportOperations();
+		}
+		return theInstance;
+
+	}
+
+	public CDDiscInventoryReportPlainTextFormat
+		makeCDDiscInventoryReportPlainTextFormat()
+	{
+		CDDiscInventoryDTO aCDDiscInventoryDTO =
+			makeCDDiscInventoryDTO();
+		CDDiscInventoryReportPlainTextFormat irptf =
+			new CDDiscInventoryReportPlainTextFormat( aCDDiscInventoryDTO );
+		return irptf;
+	}
+
+	public CDDiscInventoryDTO makeCDDiscInventoryDTO()
+	{
+		CDDiscInventoryDTO cdidto = new CDDiscInventoryDTO();
+		CDDisc[] cdDiscs = collections.theCDDiscDataAccess.findAll();
+		cdidto.theCDDiscInventoryItems = new CDDiscInventoryItem[cdDiscs.length];
+		for ( int i = 0; i < cdDiscs.length; i++ )
+		{
+			CDDisc aCDDisc = cdDiscs[i];
+			Rental aRental = aCDDisc.getRental();
+			CDDiscInventoryItem dii = new CDDiscInventoryItem();
+			dii.isCDDiscRented = aCDDisc.isRented();
+			dii.theCDDiscPhysicalID = aCDDisc.getPhysicalID();
+			if ( aCDDisc.isRented() )
+			{
+				dii.theCustomerID = aRental.getCustomer().getCustomerID();
+			}
+			else
+			{
+				dii.theCustomerID = new CustomerID();
+			}
+			cdidto.theCDDiscInventoryItems[i] = dii;
+		}
+		return cdidto;
+
+	}
+
+	private ReportOperations()
+	{
+	}
+
+	private StoreDataAccess collections = StoreDataAccess.getInstance();
+	private static ReportOperations theInstance = null;
+
+}
+#### .\com\samscdrental\dataaccess
+
+****CDDiscDataAccess.java
+
+package com.samscdrental.dataaccess;
+
+import java.util.*;
+
+import com.samscdrental.model.*;
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CDDiscDataAccess
+	implements java.io.Serializable
+
+{
+
+	/**
+	 * add
+	 *
+	 * @param aCDDisc CDDisc
+	 */
+	public void add( CDDisc aCDDisc )
+	{
+		theCollection.add( aCDDisc );
+	}
+
+	/**
+	 * remove
+	 *
+	 * @param aCDDisc CDDisc
+	 */
+	public void remove( CDDisc aCDDisc )
+	{
+		theCollection.remove( aCDDisc );
+	}
+
+	/**
+	 * findByCDRelease
+	 *
+	 * @return CDDisc
+	 */
+	public CDDisc[] findByCDRelease( CDRelease aCDRelease )
+	{
+		Iterator iterator = theCollection.iterator();
+		Vector cdDiscs = new Vector();
+		while ( iterator.hasNext() )
+		{
+			CDDisc cdDisc = ( CDDisc ) iterator.next();
+			if ( cdDisc.getCdRelease().equals( aCDRelease ) )
+			{
+				cdDiscs.add( cdDisc );
+			}
+		}
+		return ( CDDisc[] ) cdDiscs.toArray();
+	}
+
+	/**
+	 * findByCDRelease
+	 *
+	 * @return CDDisc
+	 */
+	public CDDisc findByPhysicalID( PhysicalID aPhysicalID )
+	{
+		Iterator iterator = theCollection.iterator();
+		while ( iterator.hasNext() )
+		{
+			CDDisc cdDisc = ( CDDisc ) iterator.next();
+			if ( cdDisc.getPhysicalID().equals( aPhysicalID ) )
+			{
+				return cdDisc;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * removeAll
+	 */
+	public void removeAll_TestingOnly()
+	{
+		theCollection.clear();
+	}
+
+	/**
+	 * findAll
+	 */
+
+	public CDDisc[] findAll()
+	{
+		int size = theCollection.size();
+		CDDisc[] cddiscs = new CDDisc[size];
+		Iterator iterator = theCollection.iterator();
+
+		for ( int i = 0; i < cddiscs.length; i++ )
+		{
+			cddiscs[i] = ( CDDisc ) iterator.next();
+
+		}
+		return cddiscs;
+	}
+
+	private Collection theCollection = new Vector();
+
+}
+
+****CDReleaseDataAccess.java
+
+package com.samscdrental.dataaccess;
+
+import java.util.*;
+
+import com.samscdrental.model.*;
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CDReleaseDataAccess
+	implements java.io.Serializable
+
+{
+
+	private Collection theCollection = new Vector();
+
+	/**
+	 * add
+	 *
+	 * @param aCDRelease CDRelease
+	 */
+	public void add( CDRelease aCDRelease )
+	{
+		theCollection.add( aCDRelease );
+	}
+
+	/**
+	 * remove
+	 *
+	 * @param aCDRelease CDRelease
+	 */
+	public void remove( CDRelease aCDRelease )
+	{
+		theCollection.remove( aCDRelease );
+	}
+
+	/**
+	 * findByUPCCode
+	 *
+	 * @return CDRelease
+	 */
+	public CDRelease findByUPCCode( UPCCode aUPCCode )
+	{
+		Iterator iterator = theCollection.iterator();
+		while ( iterator.hasNext() )
+		{
+			CDRelease aCDRelease = ( CDRelease ) iterator.next();
+			if ( aCDRelease.getUPCCode().equals( aUPCCode ) )
+			{
+				return aCDRelease;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * removeAll
+	 */
+	public void removeAll_TestingOnly()
+	{
+		theCollection.clear();
+	}
+
+}
+
+****CustomerDataAccess.java
+
+package com.samscdrental.dataaccess;
+
+import java.util.*;
+
+import com.samscdrental.model.*;
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CustomerDataAccess
+	implements java.io.Serializable
+{
+
+	/**
+	 * add
+	 *
+	 * @param aCustomer Customer
+	 */
+	public void add( Customer aCustomer )
+	{
+		theCollection.add( aCustomer );
+	}
+
+	/**
+	 * remove
+	 *
+	 * @param aCustomer Customer
+	 */
+	public void remove( Customer aCustomer )
+	{
+		theCollection.remove( aCustomer );
+	}
+
+	/**
+	 * findByCustomerID
+	 *
+	 * @return Customer
+	 */
+	public Customer findByCustomerID( CustomerID aCustomerID )
+	{
+		Iterator iterator = theCollection.iterator();
+		while ( iterator.hasNext() )
+		{
+			Customer Customer = ( Customer ) iterator.next();
+			if ( Customer.getCustomerID().equals( aCustomerID ) )
+			{
+				return Customer;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * removeAll
+	 */
+	public void removeAll_TestingOnly()
+	{
+		theCollection.clear();
+	}
+
+	private Collection theCollection = new Vector();
+
+}
+
+****DataAccessHelper.java
+
+package com.samscdrental.dataaccess;
+
+import java.io.*;
+
+import com.samscdrental.failures.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class DataAccessHelper
+{
+
+	public static Object readObjectFromOpenStream( Class expectedClass,
+		ObjectInputStream input )
+	{
+		Object anObject = null;
+		try
+		{
+			anObject = input.readObject();
+			if ( !anObject.getClass().equals( expectedClass ) )
+			{
+				throw new ClassNotFoundException();
+			}
+		}
+
+		catch ( IOException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_CREATING_OBJECT_STREAM, exception );
+		}
+		catch ( ClassNotFoundException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_STREAM_NOT_COLLECTION, exception );
+		}
+
+		return anObject;
+
+	}
+
+	public static void writeObjectToOpenStream( Object anObject,
+												ObjectOutputStream output )
+	{
+
+		try
+		{
+			output.writeObject( anObject );
+		}
+		catch ( IOException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_CREATING_OBJECT_STREAM, exception );
+		}
+
+		return;
+	}
+
+	// Error messages
+	private static final String ERROR_CREATING_OBJECT_STREAM
+		= "Unable to create or access Object stream ";
+	private static final String ERROR_STREAM_NOT_COLLECTION
+		= "Stream is not a collection ";
+
+}
+
+****StoreDataAccess.java
+
+package com.samscdrental.dataaccess;
+
+import java.io.*;
+
+import com.samscdrental.configuration.*;
+import com.samscdrental.failures.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class StoreDataAccess
+{
+
+	public CDDiscDataAccess theCDDiscDataAccess
+		= new CDDiscDataAccess();
+	public CustomerDataAccess theCustomerDataAccess
+		= new CustomerDataAccess();
+	public CDReleaseDataAccess theCDReleaseDataAccess
+		= new CDReleaseDataAccess();
+	public static StoreDataAccess getInstance()
+	{
+		if ( theCollections == null )
+		{
+			theCollections = new StoreDataAccess();
+		}
+		return theCollections;
+	}
+
+	public static StoreDataAccess makeNew()
+	{
+		theCollections = new StoreDataAccess( true );
+
+		return theCollections;
+
+	}
+
+	private StoreDataAccess( boolean other )
+	{
+		Configuration configuration = Configuration.getInstance();
+		DataAccessConfiguration dac = configuration.getDataAccessConfiguration();
+		DATA_FILENAME = dac.dataFilename;
+		theCDDiscDataAccess = new CDDiscDataAccess();
+		theCustomerDataAccess = new CustomerDataAccess();
+		theCDReleaseDataAccess = new CDReleaseDataAccess();
+	}
+
+	private StoreDataAccess()
+	{
+
+		Configuration configuration = Configuration.getInstance();
+		DataAccessConfiguration dac = configuration.getDataAccessConfiguration();
+		DATA_FILENAME = dac.dataFilename;
+		// Read the serialized file
+		FileInputStream fileinput = null;
+		ObjectInputStream input = null;
+		try
+		{
+			fileinput = new FileInputStream( DATA_FILENAME );
+			input = new ObjectInputStream( fileinput );
+		}
+		catch ( FileNotFoundException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_OPENING_FILE + DATA_FILENAME, exception );
+		}
+		catch ( IOException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_CREATING_OBJECT_STREAM + DATA_FILENAME, exception );
+
+		}
+
+		theCDDiscDataAccess =
+			( CDDiscDataAccess ) DataAccessHelper.readObjectFromOpenStream(
+			theCDDiscDataAccess.getClass(), input );
+		theCustomerDataAccess =
+			( CustomerDataAccess ) DataAccessHelper.
+			readObjectFromOpenStream(
+			theCustomerDataAccess.getClass(), input );
+		theCDReleaseDataAccess =
+			( CDReleaseDataAccess ) DataAccessHelper.
+			readObjectFromOpenStream(
+			theCDReleaseDataAccess.getClass(), input );
+
+		try
+		{
+			input.close();
+		}
+		catch ( IOException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_STREAM_NOT_CLOSED + DATA_FILENAME, exception );
+		}
+	}
+
+	/**
+	 * dispose
+	 */
+	public void dispose()
+	{
+		try
+		{
+			FileOutputStream fileoutput = new FileOutputStream(
+				DATA_FILENAME );
+			ObjectOutputStream output = new ObjectOutputStream( fileoutput );
+			DataAccessHelper.writeObjectToOpenStream(
+				theCDDiscDataAccess, output );
+			DataAccessHelper.writeObjectToOpenStream(
+				theCustomerDataAccess, output );
+			DataAccessHelper.writeObjectToOpenStream(
+				theCDReleaseDataAccess, output );
+			output.close();
+		}
+		catch ( FileNotFoundException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_OPENING_FILE + DATA_FILENAME, exception );
+		}
+		catch ( IOException exception )
+		{
+			throw new SeriousErrorException(
+				ERROR_CREATING_OBJECT_STREAM + DATA_FILENAME, exception );
+		}
+
+	}
+
+	// This is a singleton class
+	private static StoreDataAccess theCollections = null;
+
+	private static final String ERROR_OPENING_FILE =
+		"Error opening  file ";
+	private static final String ERROR_CREATING_OBJECT_STREAM
+		= "Unable to create or access Object stream ";
+	private static final String ERROR_STREAM_NOT_CLOSED
+		= "Stream not closed ";
+
+	private static String DATA_FILENAME;
+
+}
+#### .\com\samscdrental\display
+#### .\com\samscdrental\display\adt
+
+****CustomerIDTextField.java
+
+package com.samscdrental.display.adt;
+
+import java.awt.event.*;
+import javax.swing.*;
+
+import com.samscdrental.failures.*;
+import com.samscdrental.model.adt.*;
+
+public class CustomerIDTextField
+	extends JTextField
+{
+
+	private class MyKeyListener
+		extends java.awt.event.KeyAdapter
+
+	{
+		/**
+		 * Invoked when a key has been typed.
+		 *
+		 * @param e KeyEvent
+		 * @todo Implement this java.awt.event.KeyListener method
+		 */
+		public void keyTyped( KeyEvent e )
+		{
+			char c = e.getKeyChar();
+			if ( !Character.isLetterOrDigit( c ) &&
+				 !Character.isISOControl( c ) )
+			{
+				e.consume();
+			}
+		}
+
+	}
+
+	public CustomerIDTextField()
+	{
+		super();
+		setText( "" );
+		this.addKeyListener( new MyKeyListener() );
+	}
+
+	public CustomerID getCustomerID() throws CustomerIDFormatDeviation
+	{
+		String customerIDString = getText();
+		CustomerID aCustomerID = CustomerID.parseString( customerIDString );
+		return aCustomerID;
+	}
+}
+
+****PhysicalIDTextField.java
+
+package com.samscdrental.display.adt;
+
+import java.awt.event.*;
+import javax.swing.*;
+
+import com.samscdrental.failures.*;
+import com.samscdrental.model.adt.*;
+
+public class PhysicalIDTextField
+	extends JTextField
+{
+
+	private class MyKeyListener
+		extends java.awt.event.KeyAdapter
+
+	{
+		/**
+		 * Invoked when a key has been typed.
+		 *
+		 * @param e KeyEvent
+		 * @todo Implement this java.awt.event.KeyListener method
+		 */
+		public void keyTyped( KeyEvent e )
+		{
+			char c = e.getKeyChar();
+			if ( !Character.isDigit( c ) &&
+				 !Character.isISOControl( c ) )
+			{
+				e.consume();
+			}
+		}
+
+	}
+
+	public PhysicalIDTextField()
+	{
+		super();
+		setText( "" );
+		this.addKeyListener( new MyKeyListener() );
+	}
+
+	public PhysicalID getPhysicalID() throws
+		PhysicalIDFormatDeviation
+	{
+		String physicalIDString = this.getText();
+		PhysicalID aPhysicalID = new PhysicalID( physicalIDString );
+		return aPhysicalID;
+	}
+}
+
+****CheckinDialog.java
+
+package com.samscdrental.display;
+
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+
+import com.samscdrental.controller.*;
+import com.samscdrental.display.adt.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.model.adt.*;
+import com.samscdrental.reports.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CheckinDialog
+	extends JDialog
+{
+	JLabel jLabel1 = new JLabel();
+	JLabel jLabel2 = new JLabel();
+	PhysicalIDTextField theCDDiscPhysicalIDField = new PhysicalIDTextField();
+	JToggleButton doneButton = new JToggleButton();
+	JToggleButton cancelButton = new JToggleButton();
+	RentalOperations theRentalOperations = RentalOperations.getInstance();
+	public CheckinDialog() throws HeadlessException
+	{
+		try
+		{
+			jbInit();
+		}
+		catch ( Exception e )
+		{
+			e.printStackTrace();
+		}
+	}
+
+	private void jbInit() throws Exception
+	{
+		jLabel1.setFont( new java.awt.Font( "Dialog", 1, 15 ) );
+		jLabel1.setText( "Checkin" );
+		jLabel1.setBounds( new Rectangle( 167, 40, 70, 32 ) );
+		this.getContentPane().setLayout( null );
+		jLabel2.setText( "CD Disc ID" );
+		jLabel2.setBounds( new Rectangle( 107, 113, 72, 16 ) );
+		theCDDiscPhysicalIDField.setText( "" );
+		theCDDiscPhysicalIDField.setBounds( new Rectangle( 205, 111, 96, 20 ) );
+		doneButton.setText( "Done" );
+		doneButton.setBounds( new Rectangle( 125, 186, 80, 23 ) );
+		doneButton.addActionListener( new
+									  CheckinDialog_DoneButton_actionAdapter( this ) );
+		cancelButton.setText( "Cancel" );
+		cancelButton.setBounds( new Rectangle( 215, 186, 80, 23 ) );
+		cancelButton.addActionListener( new
+										CheckinDialog_CancelButton_actionAdapter( this ) );
+		this.getContentPane().setBackground( SystemColor.control );
+		this.setJMenuBar( null );
+		this.setModal( true );
+		this.setTitle( "CheckIn " );
+		this.getContentPane().add( jLabel1, null );
+		this.getContentPane().add( doneButton, null );
+		this.getContentPane().add( theCDDiscPhysicalIDField, null );
+		this.getContentPane().add( jLabel2, null );
+		this.getContentPane().add( cancelButton, null );
+	}
+
+	void DoneButton_actionPerformed( ActionEvent e )
+	{
+		try
+		{
+			PhysicalID aPhysicalID = theCDDiscPhysicalIDField.getPhysicalID();
+			theRentalOperations.checkinCDDisc( aPhysicalID );
+		}
+		catch ( PhysicalIDFormatDeviation exception )
+		{
+			DisplayHelper.displayError( this, exception.getMessage() );
+			return;
+
+		}
+		catch ( CheckInDeviation exception )
+		{
+
+			DisplayHelper.displayError( this, exception.getMessage() );
+			return;
+		}
+		catch ( LateReturnDeviation exception )
+		{
+
+			OverdueRentalReportPlainTextFormat
+				aOverdueRentalReportPlainTextFormat =
+				Reports.createOverdueRentalReport( exception.
+				getOverdueRentalDTO() );
+			DisplayHelper.displayError( this,
+										aOverdueRentalReportPlainTextFormat.
+										getReportString() );
+
+		}
+		setVisible( false );
+
+	}
+
+	void CancelButton_actionPerformed( ActionEvent e )
+	{
+		setVisible( false );
+	}
+
+}
+
+class CheckinDialog_DoneButton_actionAdapter
+	implements java.awt.event.ActionListener
+{
+	CheckinDialog adaptee;
+
+	CheckinDialog_DoneButton_actionAdapter( CheckinDialog adaptee )
+	{
+		this.adaptee = adaptee;
+	}
+
+	public void actionPerformed( ActionEvent e )
+	{
+		adaptee.DoneButton_actionPerformed( e );
+	}
+}
+
+class CheckinDialog_CancelButton_actionAdapter
+	implements java.awt.event.ActionListener
+{
+	CheckinDialog adaptee;
+
+	CheckinDialog_CancelButton_actionAdapter( CheckinDialog adaptee )
+	{
+		this.adaptee = adaptee;
+	}
+
+	public void actionPerformed( ActionEvent e )
+	{
+		adaptee.CancelButton_actionPerformed( e );
+	}
+}
+
+****CheckoutDialog.java
+
+package com.samscdrental.display;
+
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+
+import com.samscdrental.controller.*;
+import com.samscdrental.display.adt.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.model.adt.*;
+import com.samscdrental.model.dto.*;
+import com.samscdrental.reports.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CheckoutDialog
+	extends JDialog
+{
+	RentalOperations theRentalOperations = RentalOperations.getInstance();
+	JLabel jLabel1 = new JLabel();
+	JLabel jLabel2 = new JLabel();
+	PhysicalIDTextField theCDDiscPhysicalIDField = new PhysicalIDTextField();
+	JToggleButton doneButton = new JToggleButton();
+	JToggleButton cancelButton = new JToggleButton();
+	JLabel jLabel3 = new JLabel();
+	CustomerIDTextField theCustomerIDField = new CustomerIDTextField();
+	public CheckoutDialog() throws HeadlessException
+	{
+		try
+		{
+			jbInit();
+		}
+		catch ( Exception e )
+		{
+			e.printStackTrace();
+		}
+	}
+
+	private void jbInit() throws Exception
+	{
+		jLabel1.setFont( new java.awt.Font( "Dialog", 1, 15 ) );
+		jLabel1.setText( "Checkout" );
+		jLabel1.setBounds( new Rectangle( 167, 40, 70, 32 ) );
+		this.getContentPane().setLayout( null );
+		jLabel2.setText( "CD Disc ID" );
+		jLabel2.setBounds( new Rectangle( 107, 113, 72, 16 ) );
+		theCDDiscPhysicalIDField.setText( "" );
+		theCDDiscPhysicalIDField.setBounds( new Rectangle( 205, 111, 96, 20 ) );
+		doneButton.setText( "Done" );
+		doneButton.setBounds( new Rectangle( 120, 186, 80, 23 ) );
+		doneButton.addActionListener( new
+									  CheckoutDialog_DoneButton_actionAdapter( this ) );
+		cancelButton.setText( "Cancel" );
+		cancelButton.setBounds( new Rectangle( 218, 186, 80, 23 ) );
+		cancelButton.addActionListener( new
+										CheckoutDialog_CancelButton_actionAdapter( this ) );
+		this.getContentPane().setBackground( SystemColor.control );
+		this.setJMenuBar( null );
+		this.setModal( true );
+		this.setTitle( "CheckOut" );
+		jLabel3.setBounds( new Rectangle( 107, 84, 72, 16 ) );
+		jLabel3.setRequestFocusEnabled( true );
+		jLabel3.setText( "Customer ID" );
+		theCustomerIDField.setBounds( new Rectangle( 205, 83, 96, 20 ) );
+		theCustomerIDField.setText( "" );
+		this.getContentPane().add( jLabel1, null );
+		this.getContentPane().add( theCDDiscPhysicalIDField, null );
+		this.getContentPane().add( jLabel2, null );
+		this.getContentPane().add( jLabel3, null );
+		this.getContentPane().add( theCustomerIDField, null );
+		this.getContentPane().add( doneButton, null );
+		this.getContentPane().add( cancelButton, null );
+	}
+
+	void DoneButton_actionPerformed( ActionEvent e )
+	{
+		try
+		{
+			PhysicalID aPhysicalID = theCDDiscPhysicalIDField.getPhysicalID();
+			CustomerID aCustomerID = theCustomerIDField.getCustomerID();
+
+			RentalContractDTO aRentalContractDTO = theRentalOperations.
+				checkoutCDDisc( aPhysicalID, aCustomerID );
+
+			ContractReportPlainTextFormat
+				aContractReportPlainTextFormat =
+				Reports.createContractReport( aRentalContractDTO );
+
+			Reports.printReport(
+				aContractReportPlainTextFormat );
+		}
+		catch ( PhysicalIDFormatDeviation exception )
+		{
+			DisplayHelper.displayError( this, exception.getMessage() );
+			return;
+		}
+		catch ( CustomerIDFormatDeviation exception )
+		{
+
+			DisplayHelper.displayError( this, exception.getMessage() );
+			return;
+		}
+		catch ( PrinterFailureDeviation exception )
+		{
+			DisplayHelper.displayError( this, exception.getMessage() );
+		}
+		catch ( CheckOutDeviation exception )
+		{
+
+			DisplayHelper.displayError( this, exception.getMessage() );
+			return;
+		}
+
+		setVisible( false );
+
+	}
+
+	void CancelButton_actionPerformed( ActionEvent e )
+	{
+
+		setVisible( false );
+	}
+
+}
+
+class CheckoutDialog_DoneButton_actionAdapter
+	implements java.awt.event.ActionListener
+{
+	CheckoutDialog adaptee;
+
+	CheckoutDialog_DoneButton_actionAdapter( CheckoutDialog adaptee )
+	{
+		this.adaptee = adaptee;
+	}
+
+	public void actionPerformed( ActionEvent e )
+	{
+		adaptee.DoneButton_actionPerformed( e );
+	}
+}
+
+class CheckoutDialog_CancelButton_actionAdapter
+	implements java.awt.event.ActionListener
+{
+	CheckoutDialog adaptee;
+
+	CheckoutDialog_CancelButton_actionAdapter( CheckoutDialog adaptee )
+	{
+		this.adaptee = adaptee;
+	}
+
+	public void actionPerformed( ActionEvent e )
+	{
+		adaptee.CancelButton_actionPerformed( e );
+	}
+}
+
+****DisplayHelper.java
+
+package com.samscdrental.display;
+
+import java.awt.*;
+import javax.swing.*;
+
+public class DisplayHelper
+{
+	public static void displayError( Component component, String text )
+	{
+		JOptionPane.showMessageDialog( component,
+									   text,
+									   ERROR_TITLE,
+									   JOptionPane.ERROR_MESSAGE );
+
+	}
+
+	public static void displayMessage( String text )
+	{
+		JOptionPane.showMessageDialog( null,
+									   text,
+									   MESSAGE_TITLE,
+									   JOptionPane.ERROR_MESSAGE );
+
+	}
+
+	private static String ERROR_TITLE = "Error";
+	private static String MESSAGE_TITLE = "Message";
+
+}
+
+****Main.java
+
+package com.samscdrental.display;
+
+import javax.swing.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+import com.samscdrental.controller.*;
+import com.samscdrental.failures.*;
+
+public class Main
+{
+
+	public static void main( String[] args )
+	{
+		try
+		{
+			RentalOperations.getInstance();
+			MainFrame mainFrame = new MainFrame();
+			mainFrame.setBounds( 10, 10, 400, 400 );
+			mainFrame.show();
+		}
+		catch ( SeriousErrorException exception )
+		{
+			JOptionPane.showMessageDialog( null,
+										   TERMINATION_MESSAGE_HEADER +
+										   exception.getMessage(),
+										   TERMINATION_MESSAGE_TITLE,
+										   JOptionPane.ERROR_MESSAGE );
+			displayStackTrace( exception );
+			Throwable imbeddedException =
+				exception.getCause();
+			displayStackTrace( imbeddedException );
+		}
+		catch ( Exception exception )
+		{
+
+			JOptionPane.showMessageDialog( null,
+										   TERMINATION_MESSAGE_HEADER +
+										   exception.getMessage(),
+										   UNEXCEPTED_TERMINATION_MESSAGE_TITLE,
+										   JOptionPane.ERROR_MESSAGE );
+			displayStackTrace( exception );
+		}
+	}
+
+	private static String getStackAsString( Throwable exception )
+	{
+		StringBuffer stringBuffer = new StringBuffer();
+		StackTraceElement[] ste = exception.getStackTrace();
+		for ( int i = 0; i < ste.length; i++ )
+		{
+			stringBuffer.append( ste[i].toString() +
+								 System.getProperty( "line.separator" ) );
+		}
+		return stringBuffer.toString();
+
+	}
+
+	private static void displayStackTrace( Throwable exception )
+	{
+		String errorString = getStackAsString( exception );
+		JOptionPane.showMessageDialog( null,
+									   errorString,
+									   STACK_TRACE_MESSAGE_TITLE,
+									   JOptionPane.ERROR_MESSAGE );
+
+	}
+
+	private static final String TERMINATION_MESSAGE_HEADER = "This program has terminated with the following error.\nContact your support personal at 555-1212\n";
+	private static final String TERMINATION_MESSAGE_TITLE =
+		"Termination Error Message";
+	private static final String UNEXCEPTED_TERMINATION_MESSAGE_TITLE =
+		"Unexpected Termination Error Message";
+	private static final String STACK_TRACE_MESSAGE_TITLE =
+		"Termination Stack Trace Message";
+
+}
+
+****MainFrame.java
+
+package com.samscdrental.display;
+
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+
+import com.samscdrental.controller.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class MainFrame
+	extends JFrame
+{
+	JToggleButton checkoutButton = new JToggleButton();
+	JToggleButton checkinButton = new JToggleButton();
+	JLabel generalFrame = new JLabel();
+	public MainFrame() throws HeadlessException
+	{
+		try
+		{
+			jbInit();
+		}
+		catch ( Exception e )
+		{
+			e.printStackTrace();
+		}
+	}
+
+	private void jbInit() throws Exception
+	{
+		checkoutButton.setMaximumSize( new Dimension( 71, 23 ) );
+		checkoutButton.setMinimumSize( new Dimension( 71, 23 ) );
+		checkoutButton.setText( "Checkout" );
+		checkoutButton.setBounds( new Rectangle( 93, 126, 106, 31 ) );
+		checkoutButton.addActionListener( new
+										  MainFrame_checkoutButton_actionAdapter( this ) );
+		checkinButton.setText( "Checkin" );
+		checkinButton.setBounds( new Rectangle( 221, 126, 106, 31 ) );
+		checkinButton.addActionListener( new
+										 MainFrame_checkinButton_actionAdapter( this ) );
+		this.getContentPane().setLayout( null );
+		generalFrame.setFont( new java.awt.Font( "Dialog", 1, 20 ) );
+		generalFrame.setText( "Sam\'s CD Rental" );
+		generalFrame.setBounds( new Rectangle( 126, 44, 176, 43 ) );
+		this.setLocale( java.util.Locale.getDefault() );
+		this.setResizable( false );
+		this.setTitle( "Sam\'s CD Rental" );
+		this.addWindowListener( new MainFrame_this_windowAdapter( this ) );
+		this.getContentPane().add( checkinButton, null );
+		this.getContentPane().add( checkoutButton, null );
+		this.getContentPane().add( generalFrame, null );
+
+	}
+
+	void checkoutButton_actionPerformed( ActionEvent e )
+	{
+		CheckoutDialog checkoutDialog = new CheckoutDialog();
+		checkoutDialog.setBounds( 50, 50, 400, 300 );
+
+		checkoutDialog.setVisible( true );
+	}
+
+	void checkinButton_actionPerformed( ActionEvent e )
+	{
+		CheckinDialog checkinDialog = new CheckinDialog();
+		checkinDialog.setBounds( 50, 50, 400, 300 );
+		checkinDialog.setVisible( true );
+	}
+
+	void this_windowClosing( WindowEvent e )
+	{
+		RentalOperations aRentalOperations =
+			RentalOperations.getInstance();
+		aRentalOperations.dispose();
+
+		System.exit( 0 );
+	}
+
+}
+
+class MainFrame_checkoutButton_actionAdapter
+	implements java.awt.event.ActionListener
+{
+	MainFrame adaptee;
+
+	MainFrame_checkoutButton_actionAdapter( MainFrame adaptee )
+	{
+		this.adaptee = adaptee;
+	}
+
+	public void actionPerformed( ActionEvent e )
+	{
+		adaptee.checkoutButton_actionPerformed( e );
+	}
+}
+
+class MainFrame_checkinButton_actionAdapter
+	implements java.awt.event.ActionListener
+{
+	MainFrame adaptee;
+
+	MainFrame_checkinButton_actionAdapter( MainFrame adaptee )
+	{
+		this.adaptee = adaptee;
+	}
+
+	public void actionPerformed( ActionEvent e )
+	{
+		adaptee.checkinButton_actionPerformed( e );
+	}
+}
+
+class MainFrame_this_windowAdapter
+	extends java.awt.event.WindowAdapter
+{
+	MainFrame adaptee;
+
+	MainFrame_this_windowAdapter( MainFrame adaptee )
+	{
+		this.adaptee = adaptee;
+	}
+
+	public void windowClosing( WindowEvent e )
+	{
+		adaptee.this_windowClosing( e );
+	}
+}
+#### .\com\samscdrental\failures
+
+****CDCategoryFormatDeviation.java
+
+package com.samscdrental.failures;
+
+public class CDCategoryFormatDeviation
+	extends Deviation
+{
+	public CDCategoryFormatDeviation( String explanation )
+	{
+		super( explanation );
+	}
+
+}
+
+****CheckInDeviation.java
+
+package com.samscdrental.failures;
+
+public class CheckInDeviation
+	extends Deviation
+{
+	public CheckInDeviation( String explanation )
+	{
+		super( explanation );
+	}
+}
+
+****CheckOutDeviation.java
+
+package com.samscdrental.failures;
+
+public class CheckOutDeviation
+	extends Deviation
+{
+	public CheckOutDeviation( String explanation )
+	{
+		super( explanation );
+	}
+
+}
+
+****CustomerIDFormatDeviation.java
+
+package com.samscdrental.failures;
+
+public class CustomerIDFormatDeviation
+	extends Deviation
+{
+	public CustomerIDFormatDeviation( String explanation )
+	{
+		super( explanation );
+	}
+
+}
+
+****Deviation.java
+
+package com.samscdrental.failures;
+
+public class Deviation
+	extends Exception
+{
+	public Deviation( String explanation )
+	{
+		super( explanation );
+	}
+
+}
+
+****DollarFormatDeviation.java
+
+package com.samscdrental.failures;
+
+public class DollarFormatDeviation
+	extends Deviation
+{
+	public DollarFormatDeviation( String explanation )
+	{
+		super( explanation );
+	}
+
+}
+
+****ImportFileDeviation.java
+
+package com.samscdrental.failures;
+
+public class ImportFileDeviation
+	extends Deviation
+{
+	public ImportFileDeviation( String explanation, Exception aException )
+	{
+		super( explanation );
+		theOriginalException = aException;
+
+	}
+
+	public Exception getTheOriginalException()
+	{
+		return theOriginalException;
+	}
+
+	private Exception theOriginalException;
+
+}
+
+****ImportFormatDeviation.java
+
+package com.samscdrental.failures;
+
+public class ImportFormatDeviation
+	extends Deviation
+{
+
+	public ImportFormatDeviation( String explanation )
+	{
+		super( explanation );
+	}
+}
+
+****LateReturnDeviation.java
+
+package com.samscdrental.failures;
+
+import com.samscdrental.model.dto.*;
+
+public class LateReturnDeviation
+	extends Deviation
+{
+	private OverdueRentalDTO theOverdueRentalDTO = null;
+	public OverdueRentalDTO getOverdueRentalDTO()
+	{
+		return theOverdueRentalDTO;
+	}
+
+	public LateReturnDeviation( OverdueRentalDTO aOverdueRentalDTO )
+	{
+		super( "" );
+		theOverdueRentalDTO = aOverdueRentalDTO;
+
+	}
+
+}
+
+****NameFormatDeviation.java
+
+package com.samscdrental.failures;
+
+public class NameFormatDeviation
+	extends Deviation
+{
+	public NameFormatDeviation( String explanation )
+	{
+		super( explanation );
+	}
+
+}
+
+****ParseLineDeviation.java
+
+package com.samscdrental.failures;
+
+public class ParseLineDeviation
+	extends Deviation
+{
+	public ParseLineDeviation( String explanation )
+	{
+		super( explanation );
+	}
+}
+
+****PhysicalIDFormatDeviation.java
+
+package com.samscdrental.failures;
+
+public class PhysicalIDFormatDeviation
+	extends Deviation
+{
+	public PhysicalIDFormatDeviation( String explanation )
+	{
+		super( explanation );
+	}
+}
+
+****PrinterFailureDeviation.java
+
+package com.samscdrental.failures;
+
+public class PrinterFailureDeviation
+	extends Deviation
+{
+	public PrinterFailureDeviation( String explanation )
+	{
+		super( explanation );
+	}
+
+}
+
+****SeriousErrorException.java
+
+package com.samscdrental.failures;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class SeriousErrorException
+	extends RuntimeException
+{
+	public SeriousErrorException()
+	{
+	}
+
+	public SeriousErrorException( String explantion, Exception aException )
+	{
+		super( explantion, aException );
+
+	}
+
+}
+
+****StatusDeviation.java
+
+package com.samscdrental.failures;
+
+public class StatusDeviation
+	extends Deviation
+{
+	public StatusDeviation( String explanation )
+	{
+		super( explanation );
+	}
+
+}
+
+****UPCCodeFormatDeviation.java
+
+package com.samscdrental.failures;
+
+public class UPCCodeFormatDeviation
+	extends Deviation
+{
+	public UPCCodeFormatDeviation( String explanation )
+	{
+		super( explanation );
+	}
+}
+#### .\com\samscdrental\helper
+
+****StringHelper.java
+
+package com.samscdrental.helper;
+
+public class StringHelper
+{
+	public static boolean containsOnlyAlphanumerics( String aString )
+	{
+		for ( int i = 0; i < aString.length(); i++ )
+		{
+			char c = aString.charAt( i );
+			if ( !Character.isLetterOrDigit( c ) )
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static boolean containsOnlyNumerics( String aString )
+	{
+		for ( int i = 0; i < aString.length(); i++ )
+		{
+			char c = aString.charAt( i );
+			if ( !Character.isDigit( c ) )
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static boolean containsNoControls( String aString )
+	{
+		for ( int i = 0; i < aString.length(); i++ )
+		{
+			char c = aString.charAt( i );
+			if ( Character.isISOControl( c ) )
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+}
+#### .\com\samscdrental\importexport
+
+****AddFromFileInterface.java
+
+package com.samscdrental.importexport;
+
+import com.samscdrental.failures.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public interface AddFromFileInterface
+{
+	void addToCollection( String line ) throws ParseLineDeviation;
+}
+
+****CDDiscDataAccessImportExport.java
+
+package com.samscdrental.importexport;
+
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.model.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CDDiscDataAccessImportExport
+{
+	public CDDiscDataAccessImportExport( CDDiscDataAccess aCDDiscCollection )
+	{
+		theCDDiscCollection = aCDDiscCollection;
+	}
+
+	public void addCDDiscsFromFile( String filename ) throws
+		ImportFormatDeviation, ImportFileDeviation
+	{
+		DataAccessImportExportHelper importExportHelper =
+			new DataAccessImportExportHelper();
+		importExportHelper.addCDDiscsFromFile( filename, CDDISC_FILE,
+											   new CDDiscAddToCollection() );
+	}
+
+	private class CDDiscAddToCollection
+		implements AddFromFileInterface
+	{
+		public void addToCollection( String line ) throws ParseLineDeviation
+		{
+			CDDisc aCDDisc = CDDiscImportExport.parseLine( line );
+			theCDDiscCollection.add( aCDDisc );
+			return;
+
+		}
+	}
+
+	private CDDiscDataAccess theCDDiscCollection;
+
+	private static final String CDDISC_FILE = "CDDisc file ";
+
+}
+
+****CDDiscImportExport.java
+
+package com.samscdrental.importexport;
+
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.model.*;
+import com.samscdrental.model.adt.*;
+
+public class CDDiscImportExport
+{
+
+	/**
+	 * parseLine
+	 *
+	 * @param aString String
+	 */
+	public static CDDisc parseLine( String line ) throws ParseLineDeviation
+	{
+		// The line is expected to be in <PhysicalID> <UPCCode of CDRelease> format
+		String[] tokens = line.split( "\\|" );
+		if ( tokens.length < 2 )
+		{
+			throw new ParseLineDeviation( ERROR_CDDISC_TOKEN_COUNT +
+										  tokens.length );
+		}
+
+		String cdDiscPhysicalIDString = tokens[0];
+		String cdDiscReleaseUPCCodeString = tokens[1];
+		try
+		{
+			PhysicalID aPhysicalID = PhysicalID.parseString(
+				cdDiscPhysicalIDString );
+			UPCCode aUPCCode = UPCCode.parseString( cdDiscReleaseUPCCodeString );
+
+			StoreDataAccess collections = StoreDataAccess.getInstance();
+			CDRelease aCDRelease = collections.theCDReleaseDataAccess.
+				findByUPCCode( aUPCCode );
+			if ( aCDRelease == null )
+			{
+				throw new ParseLineDeviation( ERROR_CDRELEASE_NOT_FOUND +
+											  aUPCCode );
+			}
+			return new CDDisc( aCDRelease, aPhysicalID );
+		}
+		catch ( PhysicalIDFormatDeviation e )
+		{
+			throw new ParseLineDeviation( e.getMessage() );
+		}
+		catch ( UPCCodeFormatDeviation e )
+		{
+			throw new ParseLineDeviation( e.getMessage() );
+		}
+
+	}
+
+	private static final String ERROR_CDDISC_TOKEN_COUNT =
+		"CDDisc line has wrong element count of ";
+	private static final String ERROR_CDRELEASE_NOT_FOUND =
+		"CDRelease Not Found for CDDisc ";
+
+}
+
+****CDReleaseDataAccessImportExport.java
+
+package com.samscdrental.importexport;
+
+import java.io.*;
+
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.model.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CDReleaseDataAccessImportExport
+{
+
+	public CDReleaseDataAccessImportExport( CDReleaseDataAccess
+											aCDReleaseStateCollection )
+	{
+		theCDReleaseCollection = aCDReleaseStateCollection;
+	}
+
+	public void addCDReleasesFromFile( String filename ) throws
+		ImportFormatDeviation, ImportFileDeviation
+	{
+		BufferedReader in = null;
+		FileReader fileReader = null;
+		StringBuffer errorString = new StringBuffer();
+		boolean errorOccurred = false;
+
+		try
+		{
+			fileReader = new FileReader( filename );
+			in = new BufferedReader( fileReader );
+		}
+		catch ( FileNotFoundException exception )
+		{
+			throw new ImportFileDeviation(
+				ERROR_OPENING_CDRELEASE_FILE +
+				filename, exception );
+		}
+		try
+		{
+			String line = null;
+			// Keep reading till the end of the file
+			while ( ( line = in.readLine() ) != null )
+			{
+				if ( line.length() > 0 )
+				{
+					try
+					{
+						CDRelease aCDRelease = CDReleaseImportExport.parseLine(
+							line );
+						theCDReleaseCollection.add( aCDRelease );
+					}
+					catch ( ParseLineDeviation e )
+					{
+						errorString.append( e.getMessage() );
+						errorOccurred = true;
+					}
+				}
+			}
+		}
+		catch ( IOException exception )
+		{
+			throw new ImportFileDeviation( ERROR_READING_CDRELEASE_FILE +
+										   filename, exception );
+
+		}
+		finally
+		{
+			try
+			{
+				in.close();
+			}
+			catch ( IOException exception )
+			{
+				throw new SeriousErrorException(
+					ERROR_CLOSING_CDRELEASE_FILE +
+					filename, exception );
+			}
+		}
+		if ( errorOccurred )
+		{
+			throw new ImportFormatDeviation( errorString.toString() );
+		}
+		return;
+	}
+
+	private CDReleaseDataAccess theCDReleaseCollection;
+
+// Error messages
+	private static final String ERROR_OPENING_CDRELEASE_FILE =
+		"Error opening CDRelease file ";
+	private static final String ERROR_CLOSING_CDRELEASE_FILE =
+		"Error closing CDRelease file";
+	private static final String ERROR_READING_CDRELEASE_FILE =
+		"Error reading CDRelease file";
+
+}
+
+****CDReleaseImportExport.java
+
+package com.samscdrental.importexport;
+
+import com.samscdrental.failures.*;
+import com.samscdrental.model.*;
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CDReleaseImportExport
+{
+
+	/**
+	 * parseLine
+	 *
+	 * @param aString String
+	 */
+	public static CDRelease parseLine( String line ) throws ParseLineDeviation
+	{
+		// The line is expected to be in <UPCCode> <title>
+
+		String[] tokens = line.split( "\\|" );
+		if ( tokens.length < 3 )
+		{
+			throw new ParseLineDeviation( ERROR_CDRELEASE_TOKEN_COUNT +
+										  tokens.length );
+		}
+
+		String upcCodeString = tokens[0];
+		String categoryIDString = tokens[1];
+		String titleString = tokens[2];
+
+		try
+		{
+			UPCCode aUPCCode = UPCCode.parseString( upcCodeString );
+
+			CDCategory aCDCategory = CDCategory.parseString( categoryIDString );
+
+			if ( titleString.length() < 1 )
+
+			{
+				throw new ParseLineDeviation( ERROR_TITLE + line );
+			}
+			Name aTitle = Name.parseString( titleString );
+			return new CDRelease( aCDCategory, aTitle, aUPCCode );
+		}
+
+		catch ( CDCategoryFormatDeviation e )
+		{
+			throw new ParseLineDeviation( e.getMessage()
+										  + categoryIDString );
+		}
+		catch ( UPCCodeFormatDeviation e )
+		{
+			throw new ParseLineDeviation( e.getMessage()
+										  + upcCodeString );
+		}
+		catch ( NameFormatDeviation e )
+		{
+			throw new ParseLineDeviation( e.getMessage()
+										  + titleString );
+		}
+
+	}
+
+	// Error messages from the parse
+	private static final String ERROR_TITLE =
+		"No title";
+	private static final String ERROR_CDRELEASE_TOKEN_COUNT =
+		"CDRelease line has wrong element count of ";
+
+}
+
+****CustomerDataAccesstExport.java
+
+package com.samscdrental.importexport;
+
+import java.io.*;
+
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.model.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CustomerDataAccesstExport
+{
+
+	public CustomerDataAccesstExport( CustomerDataAccess
+									  aCustomerStateCollection )
+	{
+		theCustomerCollection = aCustomerStateCollection;
+	}
+
+	public void addCustomersFromFile( String filename ) throws
+		ImportFormatDeviation, ImportFileDeviation
+	{
+		BufferedReader in = null;
+		FileReader aFileReader = null;
+		StringBuffer errorString = new StringBuffer();
+		boolean errorOccurred = false;
+
+		try
+		{
+			aFileReader = new FileReader( filename );
+			in = new BufferedReader( aFileReader );
+		}
+		catch ( FileNotFoundException exception )
+		{
+			throw new ImportFileDeviation(
+				ERROR_OPENING_CUSTOMER_FILE + filename, exception );
+		}
+		try
+		{
+			String line = null;
+			// Keep reading till the end of the file
+			while ( ( line = in.readLine() ) != null )
+			{
+				if ( line.length() > 0 )
+				{
+					try
+					{
+						Customer aCustomer =
+							CustomerImportExport.parseLine( line );
+						theCustomerCollection.add( aCustomer );
+
+					}
+					catch ( ParseLineDeviation e )
+					{
+						errorString.append( e.getMessage() );
+						errorOccurred = true;
+
+					}
+				}
+			}
+		}
+
+		catch ( IOException exception )
+		{
+			throw new ImportFileDeviation( ERROR_READING_CUSTOMER_FILE +
+										   filename, exception );
+		}
+		finally
+		{
+			try
+			{
+				in.close();
+			}
+			catch ( IOException exception )
+			{
+				throw new SeriousErrorException(
+					ERROR_CLOSING_CUSTOMER_FILE +
+					filename, exception );
+			}
+		}
+	}
+
+	private CustomerDataAccess theCustomerCollection;
+
+// Error messages
+	private static final String ERROR_OPENING_CUSTOMER_FILE =
+		"Error opening customer file ";
+	private static final String ERROR_CLOSING_CUSTOMER_FILE =
+		"Error closing customer file";
+	private static final String ERROR_READING_CUSTOMER_FILE =
+		"Error reading customer file";
+
+}
+
+****CustomerImportExport.java
+
+package com.samscdrental.importexport;
+
+import com.samscdrental.failures.*;
+import com.samscdrental.model.*;
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CustomerImportExport
+{
+
+	/**
+	 * parseLine
+	 *
+	 * @param aString String
+	 */
+	public static Customer parseLine( String line ) throws ParseLineDeviation
+	{
+		// The line is expected to be in <customerID> <name> format
+
+		String[] tokens = line.split( "\\|" );
+		if ( tokens.length < 2 )
+		{
+			throw new ParseLineDeviation( ERROR_CUSTOMER_TOKEN_COUNT +
+										  tokens.length );
+		}
+		String customerIDString = tokens[0];
+		String customerNameString = tokens[1];
+		try
+		{
+			CustomerID aCustomerID = CustomerID.parseString( customerIDString );
+			if ( customerNameString.length() < 1 )
+			{
+				throw new ParseLineDeviation( ERROR_NO_NAME + line );
+			}
+			Name aName = Name.parseString( customerNameString );
+
+			return new Customer( aName, aCustomerID );
+		}
+		catch ( CustomerIDFormatDeviation e )
+		{
+			throw new ParseLineDeviation( e.getMessage() +
+										  customerIDString );
+		}
+		catch ( NameFormatDeviation e )
+		{
+			throw new ParseLineDeviation( e.getMessage() +
+										  customerNameString );
+		}
+	}
+
+	// Error messages
+	private static final String ERROR_NO_NAME =
+		"No name for customer ";
+	private static final String ERROR_CUSTOMER_TOKEN_COUNT =
+		"Customer line has wrong element count of ";
+
+}
+
+****DataAccessImportExportHelper.java
+
+package com.samscdrental.importexport;
+
+import java.io.*;
+
+import com.samscdrental.failures.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class DataAccessImportExportHelper
+{
+
+	public void addCDDiscsFromFile( String filename,
+									String nameForErrors,
+									AddFromFileInterface addFromFile ) throws
+		ImportFormatDeviation, ImportFileDeviation
+	{
+		BufferedReader in = null;
+		FileReader fileReader = null;
+		StringBuffer errorString = new StringBuffer();
+		boolean errorOccurred = false;
+		try
+		{
+			fileReader = new FileReader( filename );
+			in = new BufferedReader( fileReader );
+		}
+		catch ( FileNotFoundException exception )
+		{
+			throw new ImportFileDeviation( ERROR_OPENING + nameForErrors +
+										   ": " + filename, exception );
+		}
+		try
+		{
+			String line = null;
+			// Keep reading till the end of the file
+			while ( ( line = in.readLine() ) != null )
+			{
+				if ( line.length() > 0 )
+				{
+					try
+					{
+						addFromFile.addToCollection( line );
+					}
+					catch ( ParseLineDeviation e )
+					{
+						errorString.append( e.getMessage() +
+											System.getProperty( "line.separator" ) );
+						errorOccurred = true;
+
+					}
+				}
+			}
+		}
+		catch ( IOException exception )
+		{
+			throw new ImportFormatDeviation( ERROR_READING + nameForErrors +
+											 ": " +
+											 filename );
+
+		}
+		finally
+		{
+			try
+			{
+				in.close();
+			}
+			catch ( IOException exception )
+			{
+				throw new SeriousErrorException(
+					ERROR_CLOSING + nameForErrors +
+					": " + filename, exception );
+			}
+		}
+		if ( errorOccurred )
+		{
+			throw new ImportFormatDeviation( errorString.toString() );
+		}
+		return;
+	}
+
+	private static final String ERROR_OPENING =
+		"Error opening ";
+	private static final String ERROR_CLOSING =
+		"Error closing ";
+	private static final String ERROR_READING =
+		"Error reading ";
+
+}
+#### .\com\samscdrental\migration
+
+****MigrateMain.java
+
+package com.samscdrental.migration;
+
+import com.samscdrental.controller.*;
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.failures.*;
+
+public class MigrateMain
+{
+	public static void main( String[] args )
+	{
+		setupFilenames( args );
+		try
+		{
+			StoreDataAccess aStoreDataAccess = StoreDataAccess.makeNew();
+			MaintenanceOperations aMaintenanceOperations =
+				MaintenanceOperations.getInstance();
+			aMaintenanceOperations.collectionsInitialize(
+				CUSTOMER_FILENAME,
+				CDDISC_FILENAME,
+				CDRELEASE_FILENAME );
+
+			aStoreDataAccess.dispose();
+		}
+		catch ( ImportFileDeviation e )
+		{
+			System.out.println( e.getMessage() );
+		}
+		catch ( ImportFormatDeviation e )
+		{
+			System.out.println( e.getMessage() );
+		}
+	}
+
+	private static void setupFilenames( String[] args )
+	{
+		if ( args.length == 0 )
+		{
+			return;
+		}
+		if ( args.length < 3 )
+		{
+			System.out.println( "You must specify 3 filenames" +
+								"- CDRelease, CDDisc, Customer" );
+			return;
+		}
+		CDRELEASE_FILENAME = args[0];
+		CDDISC_FILENAME = args[1];
+		CUSTOMER_FILENAME = args[2];
+
+	}
+
+	private static String CDRELEASE_FILENAME =
+		"/temp/samscdrental/cdrelease.txt";
+	private static String CDDISC_FILENAME = "/temp/samscdrental/cddisc.txt";
+	private static String CUSTOMER_FILENAME = "/temp/samscdrental/customer.txt";
+
+}
+#### .\com\samscdrental\model
+#### .\com\samscdrental\model\adt
+
+****CustomerID.java
+
+package com.samscdrental.model.adt;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+import com.samscdrental.failures.*;
+import com.samscdrental.helper.*;
+
+public class CustomerID
+	implements java.io.Serializable
+{
+	public CustomerID()
+	{
+
+	}
+
+	public CustomerID( String aString ) throws CustomerIDFormatDeviation
+	{
+		fromString( aString );
+
+	}
+
+	/**
+	 * fromString
+	 *
+	 * @param aString String
+	 * @return boolean
+	 */
+	public void fromString( String aString ) throws CustomerIDFormatDeviation
+	{
+		if ( aString.length() == LENGTH_OF_VALUE )
+		{
+			if ( !StringHelper.containsOnlyAlphanumerics( aString ) )
+			{
+				throw new CustomerIDFormatDeviation(
+					ERROR_CUSTOMER_ID_BAD_CHARACTERS );
+			}
+
+			theValue = aString;
+		}
+		else
+		{
+
+			throw new CustomerIDFormatDeviation( ERROR_CUSTOMER_ID_BAD_LENGTH );
+		}
+	}
+
+	public static CustomerID parseString( String aString ) throws
+		CustomerIDFormatDeviation
+	{
+		return new CustomerID( aString );
+	}
+
+	boolean isInvalid()
+	{
+		return theValue.equals( INVALID_ID );
+	}
+
+/*	public String getValue()
+	{
+		return theValue;
+	}
+*/
+	/**
+	 * Returns a string representation of the object.
+	 *
+	 * @return a string representation of the object.
+	 */
+	public String toString()
+	{
+		return theValue;
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( CustomerID aCustomerID )
+	{
+		return theValue.equals( aCustomerID.theValue );
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( Object obj )
+	{
+		return equals( ( CustomerID ) obj );
+	}
+
+	private String theValue = INVALID_ID;
+	private static final String INVALID_ID = "INVALID ID";
+	private static final int LENGTH_OF_VALUE = 10;
+
+	// Error messages
+	private static final String ERROR_CUSTOMER_ID_BAD_LENGTH =
+		"Customer ID not correct length ";
+	private static final String ERROR_CUSTOMER_ID_BAD_CHARACTERS =
+		"Customer ID can contain only digits and letters ";
+
+}
+
+****Dollar.java
+
+package com.samscdrental.model.adt;
+
+import java.math.*;
+import java.text.*;
+
+import com.samscdrental.failures.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class Dollar
+	implements java.io.Serializable
+{
+
+	public Dollar()
+	{
+	}
+
+	public Dollar( double value )
+	{
+		theValue = new BigDecimal( value );
+	}
+
+	/**
+	 * fromString
+	 *
+	 * @param aString String
+	 * @return boolean
+	 */
+	public void fromString( String aString ) throws DollarFormatDeviation
+	{
+		String s = aString.trim();
+		s.replaceAll( ",", "" );
+		if ( s.startsWith( "$" ) )
+		{
+			s = s.substring( 1 );
+		}
+		try
+		{
+			theValue = new BigDecimal( s );
+		}
+		catch ( NumberFormatException exception )
+		{
+			throw new DollarFormatDeviation( ERROR_DOLLAR_BAD_FORMAT + aString );
+		}
+
+		return;
+	}
+
+	/**
+	 * PhysicalID
+	 *
+	 * @param aString String
+	 */
+	private Dollar( String aString ) throws DollarFormatDeviation
+	{
+		fromString( aString );
+
+	}
+
+	public static Dollar parseString( String aString ) throws
+		DollarFormatDeviation
+	{
+		return new Dollar( aString );
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( Dollar aDollar )
+	{
+		return aDollar.theValue.equals( theValue );
+	}
+
+	void fromDouble( double value )
+	{
+		theValue = new BigDecimal( value );
+
+	}
+
+	/**
+	 * Returns a string representation of the object.
+	 *
+	 * @return a string representation of the object.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public String toString()
+	{
+		return NumberFormat.getCurrencyInstance().format( theValue );
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( Object obj )
+	{
+		return equals( ( Dollar ) obj );
+	}
+
+	private BigDecimal theValue = new BigDecimal( 0.0 );
+
+	// Error messages
+	static final String ERROR_DOLLAR_BAD_FORMAT =
+		"Dollar - bad format ";
+
+}
+
+****Name.java
+
+package com.samscdrental.model.adt;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+import com.samscdrental.failures.*;
+import com.samscdrental.helper.*;
+
+public class Name
+	implements java.io.Serializable
+{
+
+	public Name()
+	{
+	}
+
+	/**
+	 * Name
+	 *
+	 * @param aString String
+	 */
+
+	public Name( String aString ) throws NameFormatDeviation
+	{
+		fromString( aString );
+
+	}
+
+/*	public String getValue()
+	{
+		return theValue;
+	}
+*/
+	boolean isInvalid()
+	{
+		return theValue.equals( INVALID_ID );
+	}
+
+	/**
+	 * fromString
+	 *
+	 * @param aString String
+	 * @return boolean
+	 */
+	private void fromString( String aString ) throws NameFormatDeviation
+	{
+
+		if ( !StringHelper.containsNoControls( aString ) )
+		{
+			throw new NameFormatDeviation(
+				ERROR_NAME_BAD_CHARACTERS );
+		}
+		theValue = aString;
+	}
+
+	public static Name parseString( String aString ) throws
+		NameFormatDeviation
+	{
+		return new Name( aString );
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( Name aName )
+	{
+		return ( aName.theValue.equals( this.theValue ) );
+
+	}
+
+	public String toString()
+	{
+		return theValue;
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( Object obj )
+	{
+		return equals( ( Name ) obj );
+	}
+
+	private String theValue = INVALID_ID;
+	private static final String INVALID_ID = "INVALID_NAME";
+
+	// Error messages
+	private static final String ERROR_NAME_BAD_CHARACTERS =
+		"Name can contain only letters and spaces ";
+
+}
+
+****PhysicalID.java
+
+package com.samscdrental.model.adt;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+import com.samscdrental.failures.*;
+import com.samscdrental.helper.*;
+
+public class PhysicalID
+	implements java.io.Serializable
+{
+
+	public PhysicalID()
+	{
+	}
+
+	/**
+	 * PhysicalID
+	 *
+	 * @param aString String
+	 */
+
+	public PhysicalID( String aString ) throws PhysicalIDFormatDeviation
+	{
+		fromString( aString );
+
+	}
+/*
+	public String getValue()
+	{
+		return theValue;
+	}
+*/
+	boolean isInvalid()
+	{
+		return theValue.equals( INVALID_ID );
+	}
+
+	/**
+	 * fromString
+	 *
+	 * @param aString String
+	 * @return boolean
+	 */
+	private void fromString( String aString ) throws PhysicalIDFormatDeviation
+	{
+		if ( aString.length() == LENGTH_OF_VALUE )
+		{
+			if ( !StringHelper.containsOnlyNumerics( aString ) )
+			{
+				throw new PhysicalIDFormatDeviation(
+					ERROR_PHYSICAL_ID_BAD_CHARACTERS );
+			}
+			theValue = aString;
+		}
+		else
+		{
+			throw new PhysicalIDFormatDeviation( ERROR_PHYSICAL_ID_BAD_LENGTH );
+		}
+	}
+
+	public static PhysicalID parseString( String aString ) throws
+		PhysicalIDFormatDeviation
+	{
+		return new PhysicalID( aString );
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( PhysicalID aPhysicalID )
+	{
+		return ( aPhysicalID.theValue.equals( this.theValue ) );
+
+	}
+
+	public String toString()
+	{
+		return theValue;
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( Object obj )
+	{
+		return equals( ( PhysicalID ) obj );
+	}
+
+	private String theValue = INVALID_ID;
+	private static final String INVALID_ID = "INVALID_ID";
+	private static final int LENGTH_OF_VALUE = 10;
+
+	// Error messages
+	private static final String ERROR_PHYSICAL_ID_BAD_LENGTH =
+		"Physical ID not correct length ";
+	private static final String ERROR_PHYSICAL_ID_BAD_CHARACTERS =
+		"Physical ID can contain only digits ";
+
+}
+
+****Timestamp.java
+
+package com.samscdrental.model.adt;
+
+import java.util.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class Timestamp
+	implements java.io.Serializable
+{
+
+	public Timestamp()
+	{
+		// Will be initialized to the current time
+		theDate = new Date();
+	}
+
+	/**
+	 * subtract
+	 *
+	 * @param aTimestamp Timestamp
+	 * @return int - Number of Days
+	 */
+	public int differenceInDays( Timestamp aTimestamp )
+	{
+		long thisMilliseconds = this.theDate.getTime();
+		long thatMilliseconds = aTimestamp.theDate.getTime();
+		long millisecondsDifference = thisMilliseconds - thatMilliseconds;
+		int days = ( int ) ( millisecondsDifference /
+							 NUMBER_MILLISECONDS_IN_DAY );
+
+		return days;
+
+	}
+
+	/**
+	 * add
+	 *
+	 * @param days int
+	 * @return Timestamp
+	 */
+	public Timestamp addDays( int days )
+	{
+		long thisMilliseconds = this.theDate.getTime();
+		long thatMilliseconds = thisMilliseconds +
+			days * NUMBER_MILLISECONDS_IN_DAY;
+
+		Timestamp aTimestamp = new Timestamp();
+		aTimestamp.theDate = new Date( thatMilliseconds );
+		return aTimestamp;
+	}
+
+	/**
+	 * Returns a string representation of the object.
+	 *
+	 * @return a string representation of the object.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public String toString()
+	{
+		return theDate.toString();
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( Timestamp aTimestamp )
+	{
+		return theDate.equals( aTimestamp.theDate );
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( Object obj )
+	{
+		return equals( ( Timestamp ) obj );
+	}
+
+	private Date theDate;
+	private static final long NUMBER_MILLISECONDS_IN_DAY = 1000 * 24 * 60 * 60;
+
+}
+
+****UPCCode.java
+
+package com.samscdrental.model.adt;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+import com.samscdrental.failures.*;
+
+public class UPCCode
+	implements java.io.Serializable
+{
+
+/*	public String getValue()
+	{
+		return theValue;
+	}
+*/
+	public UPCCode()
+	{
+	}
+
+	/**
+	 * fromString
+	 *
+	 * @param aString String
+	 * @return boolean
+	 */
+	private void fromString( String aString ) throws UPCCodeFormatDeviation
+	{
+		if ( aString.length() == LENGTH_OF_VALUE )
+		{
+			theValue = aString;
+		}
+		else
+		{
+			throw new UPCCodeFormatDeviation( ERROR_UPCCODE_BAD_FORMAT );
+		}
+	}
+
+	public static UPCCode parseString( String aString ) throws
+		UPCCodeFormatDeviation
+	{
+		return new UPCCode( aString );
+	}
+
+	/**
+	 * UPCCode
+	 *
+	 * @param aString String
+	 */
+	public UPCCode( String aString ) throws UPCCodeFormatDeviation
+	{
+
+		fromString( aString );
+
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( UPCCode aUPCCode )
+	{
+		return aUPCCode.theValue.equals( this.theValue );
+
+	}
+
+	/**
+	 * Returns a string representation of the object.
+	 *
+	 * @return a string representation of the object.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public String toString()
+	{
+		return theValue;
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( Object obj )
+	{
+		return equals( ( UPCCode ) obj );
+	}
+
+	private String theValue = "INVALID UPC";
+	private static final int LENGTH_OF_VALUE = 12;
+
+	// Error messages
+	private static final String ERROR_UPCCODE_BAD_FORMAT =
+		"UPCCode - bad format ";
+
+}
+#### .\com\samscdrental\model\dto
+
+****CDDiscInventoryDTO.java
+
+package com.samscdrental.model.dto;
+
+public class CDDiscInventoryDTO
+{
+	public CDDiscInventoryItem[] theCDDiscInventoryItems;
+}
+
+****CDDiscInventoryItem.java
+
+package com.samscdrental.model.dto;
+
+import com.samscdrental.model.adt.*;
+
+public class CDDiscInventoryItem
+{
+	public PhysicalID theCDDiscPhysicalID;
+	public boolean isCDDiscRented;
+	public CustomerID theCustomerID;
+
+}
+
+****OverdueRentalDTO.java
+
+package com.samscdrental.model.dto;
+
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class OverdueRentalDTO
+{
+
+	public Timestamp theRentalStartTime = null;
+	public Timestamp theRentalDueTime = null;
+	public Timestamp theRentalEndTime = null;
+	public Dollar theOverdueFee = null;
+	public CustomerID theCustomerID = null;
+	public Name theCustomerName = null;
+
+	//PhoneNumber customerDayPhoneNumber;
+	public Name theCDReleaseTitle = null;
+	public PhysicalID theCDDiscPhysicalID = null;
+
+}
+
+****RentalContractDTO.java
+
+package com.samscdrental.model.dto;
+
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class RentalContractDTO
+{
+
+	public Timestamp theRentalStartTime = null;
+	public Timestamp theRentalDueTime = null;
+	public Name theCustomerName = null;
+	public Name theCDReleaseTitle = null;
+	public PhysicalID theCDDiscPhysicalID = null;
+	public Dollar theRentalFee = null;
+}
+
+****CDCategory.java
+
+package com.samscdrental.model;
+
+import com.samscdrental.failures.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CDCategory
+	implements java.io.Serializable
+{
+	static final int NEW_RELEASE_CD = 0;
+	static final int GOLDIE_OLDIE_CD = 1;
+	static final int REGULAR_CD = 2;
+	static final int INVALID_CATEGORY = 3;
+	public CDCategory()
+	{
+
+	}
+
+	public CDCategory( int value )
+	{
+		if ( value >= NEW_RELEASE_CD && value < INVALID_CATEGORY )
+		{
+			theValue = value;
+		}
+		else
+		{
+			throw new IllegalArgumentException( ERROR_CD_CATEGORY_VALUE + value );
+		}
+	}
+
+	public String toString()
+	{
+		return theStringValues[theValue];
+	}
+
+	public static CDCategory parseString( String aString ) throws
+		CDCategoryFormatDeviation
+	{
+		CDCategory aCDCategory = new CDCategory();
+		aCDCategory.fromString( aString );
+		return aCDCategory;
+	}
+
+	private void fromString( String aString ) throws CDCategoryFormatDeviation
+	{
+		for ( int i = 0; i < theStringValues.length; i++ )
+		{
+			if ( aString.equals( theStringValues[i] ) )
+			{
+				theValue = theCorrespondingValues[i];
+				return;
+			}
+		}
+		throw new CDCategoryFormatDeviation( ERROR_CD_CATEGORY_VALUE );
+	}
+
+	/**
+	 * Indicates whether some other object is "equal to" this one.
+	 *
+	 * @param obj the reference object with which to compare.
+	 * @return <code>true</code> if this object is the same as the obj argument;
+	 *   <code>false</code> otherwise.
+	 * @todo Implement this java.lang.Object method
+	 */
+	public boolean equals( CDCategory aCDCategory )
+	{
+		return ( theValue == aCDCategory.theValue );
+	}
+
+	public boolean equals( Object obj )
+	{
+		return this.equals( ( CDCategory ) obj );
+	}
+
+	private static final String[] theStringValues =
+		{
+		"NewRelease", "GoldenOldie", "Regular", "InvalidCategory"};
+	private static final int[] theCorrespondingValues =
+		{
+		NEW_RELEASE_CD, REGULAR_CD, GOLDIE_OLDIE_CD};
+	private int theValue = INVALID_CATEGORY;
+
+	// Error messages
+	private static final String ERROR_CD_CATEGORY_VALUE =
+		"Bad CDCategory value ";
+
+}
+
+****CDCategoryValues.java
+
+package com.samscdrental.model;
+
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CDCategoryValues
+{
+
+	private class CDCategoryInternalValues
+	{
+		CDCategoryInternalValues( int aCDCategory,
+								  int aBaseRentalPeriodDays,
+								  Dollar aRentalFee )
+		{
+			theCDCategory = new CDCategory( aCDCategory );
+			theBaseRentalPeriodDays = aBaseRentalPeriodDays;
+			theRentalFee = aRentalFee;
+
+		}
+
+		CDCategory theCDCategory;
+		int theBaseRentalPeriodDays;
+		Dollar theRentalFee;
+	}
+
+	private CDCategoryInternalValues[] theCDCategoryValues =
+		{
+		new CDCategoryInternalValues( CDCategory.NEW_RELEASE_CD,
+									  2, new Dollar( 3.00 ) ),
+		new CDCategoryInternalValues( CDCategory.GOLDIE_OLDIE_CD,
+									  4, new Dollar( 2.00 ) ),
+		new CDCategoryInternalValues( CDCategory.REGULAR_CD,
+									  3, new Dollar( 2.50 ) )
+	};
+
+	int getBaseRentalPeriodDays( CDCategory cdCategory )
+	{
+		for ( int i = 0; i < theCDCategoryValues.length; i++ )
+		{
+			if ( theCDCategoryValues[i].theCDCategory.equals( cdCategory ) )
+			{
+				return theCDCategoryValues[i].theBaseRentalPeriodDays;
+			}
+		}
+		return 0;
+	}
+
+	Dollar getRentalFee( CDCategory cdCategory )
+	{
+		for ( int i = 0; i < theCDCategoryValues.length; i++ )
+		{
+			if ( theCDCategoryValues[i].theCDCategory.equals( cdCategory ) )
+			{
+				return theCDCategoryValues[i].theRentalFee;
+			}
+		}
+		return new Dollar( 0 );
+	}
+}
+
+****CDDisc.java
+
+package com.samscdrental.model;
+
+import com.samscdrental.failures.*;
+import com.samscdrental.model.adt.*;
+import com.samscdrental.model.dto.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CDDisc
+	implements java.io.Serializable
+{
+
+	public CDDisc( CDRelease aCDRelease, PhysicalID aPhysicalID )
+	{
+		theCDRelease = aCDRelease;
+		thePhysicalID = aPhysicalID;
+	}
+
+	public Rental getRental()
+	{
+		return theRental;
+	}
+/*
+	public void setCdRelease( CDRelease aCDRelease )
+	{
+		theCDRelease = aCDRelease;
+	}
+
+	public void setPhysicalID( PhysicalID aPhysicalID )
+	{
+		thePhysicalID = aPhysicalID;
+	}
+*/
+	public CDRelease getCdRelease()
+	{
+		return theCDRelease;
+	}
+
+	public PhysicalID getPhysicalID()
+	{
+		return thePhysicalID;
+	}
+
+	/**
+	 * isRented
+	 *
+	 * @return boolean
+	 */
+	public boolean isRented()
+	{
+		return ( theRental != null );
+
+	}
+
+	/**
+	 * start_rental
+	 *
+	 * @param theCustomer Customer
+	 */
+	public RentalContractDTO startRental( Customer aCustomer ) throws
+		CheckOutDeviation
+	{
+		int aBaseRentalPeriodDays = 0;
+		aBaseRentalPeriodDays = theCDRelease.getBaseRentalPeriodDays();
+		Dollar rentalFee = theCDRelease.getRentalFee();
+		if ( theRental != null )
+		{
+			throw new CheckOutDeviation( ERROR_CDDISC_ALREADY_RENTED );
+		}
+		theRental = new Rental( aCustomer, aBaseRentalPeriodDays, rentalFee );
+
+		RentalContractDTO aRentalContractDTO = makeRentalContractDTO( aCustomer );
+		return aRentalContractDTO;
+	}
+
+	/**
+	 * endRental
+	 */
+	public void endRental() throws CheckInDeviation, LateReturnDeviation
+	{
+		if ( theRental == null )
+		{
+			throw new CheckInDeviation( ERROR_ENDING_NON_STARTED_RENTAL );
+		}
+		else
+		{
+			theRental.checkIn();
+			if ( theRental.isLateReturn() )
+			{
+				OverdueRentalDTO aOverdueRentalDTO = makeOverdueRentalDTO();
+				theRental = null;
+				throw new LateReturnDeviation( aOverdueRentalDTO );
+			}
+		}
+		theRental = null;
+		return;
+	}
+
+	/**
+	 * makeOverdueRentalDTO
+	 */
+	private RentalContractDTO makeRentalContractDTO( Customer aCustomer )
+	{
+		RentalContractDTO aRentalContractDTO = new RentalContractDTO();
+		aRentalContractDTO.theCDDiscPhysicalID = this.thePhysicalID;
+		aRentalContractDTO.theCDReleaseTitle = this.theCDRelease.getTitle();
+		aRentalContractDTO.theCustomerName = aCustomer.getName();
+		aRentalContractDTO.theRentalDueTime = this.theRental.getDueTime();
+		aRentalContractDTO.theRentalFee = this.theRental.getRentalFee();
+		aRentalContractDTO.theRentalStartTime = this.theRental.getStartTime();
+		return aRentalContractDTO;
+	}
+
+	/**
+	 * makeOverdueRentalDTO
+	 */
+
+	private OverdueRentalDTO makeOverdueRentalDTO()
+	{
+		OverdueRentalDTO aOverdueRentalDTO = new OverdueRentalDTO();
+		aOverdueRentalDTO.theCDDiscPhysicalID = this.thePhysicalID;
+		aOverdueRentalDTO.theCDReleaseTitle = this.theCDRelease.
+			getTitle();
+		aOverdueRentalDTO.theCustomerID = this.theRental.getCustomer().
+			getCustomerID();
+		aOverdueRentalDTO.theCustomerName = this.theRental.getCustomer().
+			getName();
+		aOverdueRentalDTO.theOverdueFee = OVERDUE_FEE;
+		aOverdueRentalDTO.theRentalDueTime = this.theRental.getDueTime();
+		aOverdueRentalDTO.theRentalEndTime = this.theRental.getEndTime();
+		aOverdueRentalDTO.theRentalStartTime = this.theRental.
+			getStartTime();
+		return aOverdueRentalDTO;
+	}
+
+	private CDRelease theCDRelease;
+	private PhysicalID thePhysicalID;
+	private Rental theRental = null;
+	private static final Dollar OVERDUE_FEE = new Dollar( 5.00 );
+
+// Error messages
+	private static final String ERROR_ENDING_NON_STARTED_RENTAL =
+		"Ending a rental that has not started";
+	private static final String ERROR_CDDISC_ALREADY_RENTED =
+		"CDDisc is already rented";
+
+}
+
+****CDRelease.java
+
+package com.samscdrental.model;
+
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CDRelease
+	implements java.io.Serializable
+{
+	/*
+	public void setCdCategory( CDCategory aCDCategory )
+	{
+		theCDCategory = aCDCategory;
+	}
+
+	public void setTitle( Name title )
+	{
+		theTitle = title;
+	}
+
+	public void setUPCCode( UPCCode aUPCCode )
+	{
+		theUPCCode = aUPCCode;
+	}
+*/
+	public CDCategory getCdCategory()
+	{
+		return theCDCategory;
+	}
+
+	public Name getTitle()
+	{
+		return theTitle;
+	}
+
+	public UPCCode getUPCCode()
+	{
+		return theUPCCode;
+	}
+
+
+
+	public CDRelease( CDCategory aCDCategory, Name aTitle, UPCCode aUPCCode )
+	{
+		theCDCategory = aCDCategory;
+		theTitle = aTitle;
+		theUPCCode = aUPCCode;
+	}
+
+	int getBaseRentalPeriodDays()
+	{
+		return theCDCategoryValues.getBaseRentalPeriodDays( theCDCategory );
+	}
+
+	Dollar getRentalFee()
+	{
+		return theCDCategoryValues.getRentalFee( theCDCategory );
+	}
+
+	private CDCategory theCDCategory;
+	private Name theTitle;
+	private UPCCode theUPCCode;
+
+	//
+	private static final CDCategoryValues theCDCategoryValues =
+		new CDCategoryValues();
+
+}
+
+****Customer.java
+
+package com.samscdrental.model;
+
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class Customer
+	implements java.io.Serializable
+{
+
+	public CustomerID getCustomerID()
+	{
+		return theCustomerID;
+	}
+
+	public Name getName()
+	{
+		return theName;
+	}
+
+
+
+	public Customer( Name aName, CustomerID aCustomerID )
+	{
+		theName = aName;
+		theCustomerID = aCustomerID;
+	}
+
+	private CustomerID theCustomerID;
+	private Name theName;
+
+}
+
+****Rental.java
+
+package com.samscdrental.model;
+
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class Rental
+	implements java.io.Serializable
+{
+
+
+
+	/**
+	 * Rental
+	 *
+	 * @param theCustomer Customer
+	 * @param baseRentalPeriodDays int
+	 */
+	public Rental( Customer aCustomer, int baseRentalPeriodDays,
+				   Dollar rentalFee )
+	{
+		theCustomer = aCustomer;
+		theBaseRentalPeriodDays = baseRentalPeriodDays;
+		theRentalFee = rentalFee;
+	}
+
+	/**
+	 * isOverdue
+	 *
+	 * @return boolean
+	 */
+	public boolean isOverdue()
+	{
+		if ( theEndTime == null )
+		{
+			// Not yet returned
+			Timestamp now = new Timestamp();
+			if ( now.differenceInDays( theStartTime ) >
+				 theBaseRentalPeriodDays )
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else
+		{
+
+			// Not overdue, since it has been returned
+			return false;
+		}
+
+	}
+
+	/**
+	 * checkIn
+	 */
+	public void checkIn()
+	{
+		theEndTime = new Timestamp();
+	}
+
+	/**
+	 * isLateReturn
+	 *
+	 * @return boolean
+	 */
+	public boolean isLateReturn()
+	{
+		if ( theEndTime == null )
+		{
+			// Not yet returned, but they are asking about it anyway
+			Timestamp now = new Timestamp();
+			if ( now.differenceInDays( theStartTime ) >
+				 theBaseRentalPeriodDays )
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else
+		{
+			// See if was late
+			if ( theEndTime.differenceInDays( theStartTime ) >
+				 theBaseRentalPeriodDays )
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+/*
+	public void setCustomer( Customer aCustomer )
+	{
+		theCustomer = aCustomer;
+	}
+*/
+	public void setStartTime( Timestamp startTime )
+	{
+		theStartTime = startTime;
+	}
+/*
+	public void setEndTime( Timestamp endTime )
+	{
+		theEndTime = endTime;
+	}
+
+	public void setRentalFee( Dollar rentalFee )
+	{
+		theRentalFee = rentalFee;
+	}
+*/
+/*
+	public void setBaseRentalPeriodDays( int baseRentalPeriodDays )
+	{
+		this.theBaseRentalPeriodDays = baseRentalPeriodDays;
+	}
+*/
+	public Customer getCustomer()
+	{
+		return theCustomer;
+	}
+
+	public Timestamp getStartTime()
+	{
+		return theStartTime;
+	}
+
+	public Timestamp getEndTime()
+	{
+		return theEndTime;
+	}
+
+	public Dollar getRentalFee()
+	{
+		return theRentalFee;
+	}
+
+	public int getBaseRentalPeriodDays()
+	{
+		return theBaseRentalPeriodDays;
+	}
+
+	public Timestamp getDueTime()
+	{
+		return theStartTime.addDays( theBaseRentalPeriodDays );
+	}
+
+	private Customer theCustomer = null;
+	private Timestamp theStartTime = new Timestamp();
+	private Timestamp theEndTime = null;
+	private Dollar theRentalFee = null;
+	private int theBaseRentalPeriodDays;
+
+}
+#### .\com\samscdrental\reports
+
+****CDDiscInventoryMain.java
+
+package com.samscdrental.reports;
+
+import com.samscdrental.controller.*;
+import com.samscdrental.failures.*;
+
+public class CDDiscInventoryMain
+{
+	public static void main( String[] args )
+	{
+		try
+		{
+			ReportOperations aReportOperations = ReportOperations.getInstance();
+			CDDiscInventoryReportPlainTextFormat dirptf = aReportOperations.
+				makeCDDiscInventoryReportPlainTextFormat();
+			Reports.printReport( dirptf );
+		}
+		catch ( PrinterFailureDeviation e )
+		{
+
+			System.out.println( e.getMessage() );
+		}
+
+	}
+
+}
+
+****CDDiscInventoryReportPlainTextFormat.java
+
+package com.samscdrental.reports;
+
+import com.samscdrental.model.dto.*;
+
+public class CDDiscInventoryReportPlainTextFormat
+	implements ReportPlainTextFormat
+
+{
+	public CDDiscInventoryReportPlainTextFormat()
+	{
+	}
+
+	private String theReportString;
+	public String getReportString()
+	{
+		return theReportString;
+	}
+
+	public CDDiscInventoryReportPlainTextFormat( CDDiscInventoryDTO
+												 aCDDiscInventoryDTO )
+	{
+		String nl = System.getProperty( "line.separator" );
+
+		StringBuffer stringBuffer = new StringBuffer(); ;
+
+		stringBuffer.append( "Sam's CD Rental Store Inventory" + nl );
+		for ( int i = 0; i < aCDDiscInventoryDTO.theCDDiscInventoryItems.length;
+			  i++ )
+		{
+			CDDiscInventoryItem dii = aCDDiscInventoryDTO.
+				theCDDiscInventoryItems[i];
+			if ( dii.isCDDiscRented )
+			{
+				stringBuffer.append( dii.theCDDiscPhysicalID + " " +
+									 dii.theCustomerID + nl );
+			}
+			else
+			{
+				stringBuffer.append( dii.theCDDiscPhysicalID +
+									 " " + "In house" + nl );
+			}
+		}
+		theReportString = stringBuffer.toString();
+	}
+
+}
+
+****ContractReportPlainTextFormat.java
+
+package com.samscdrental.reports;
+
+import com.samscdrental.model.dto.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class ContractReportPlainTextFormat
+	implements ReportPlainTextFormat
+{
+	private String theReportString;
+	public String getReportString()
+	{
+		return theReportString;
+	}
+
+	public ContractReportPlainTextFormat( RentalContractDTO rentalContractDTO )
+	{
+		String nl = System.getProperty( "line.separator" );
+		theReportString =
+			"Sam's CD Rental Store Contract" + nl +
+			"Name: " + rentalContractDTO.theCustomerName + nl +
+			"Date: " + rentalContractDTO.theRentalStartTime + nl +
+			"DUE:  " + rentalContractDTO.theRentalDueTime + nl +
+			"Title:" + rentalContractDTO.theCDReleaseTitle + nl +
+			"ID:   " + rentalContractDTO.theCDDiscPhysicalID + nl +
+			"Fee:  " + rentalContractDTO.theRentalFee + nl;
+
+	}
+
+}
+
+****OverdueRentalReportPlainTextFormat.java
+
+package com.samscdrental.reports;
+
+import com.samscdrental.model.dto.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class OverdueRentalReportPlainTextFormat
+	implements ReportPlainTextFormat
+{
+	private String theReportString;
+	public String getReportString()
+	{
+		return theReportString;
+	}
+
+	public OverdueRentalReportPlainTextFormat( OverdueRentalDTO
+											   aOverdueRentalContractDTO )
+	{
+		String nl = System.getProperty( "line.separator" );
+		theReportString =
+			"LATE RETURN REPORT" + nl +
+			"Name:     " + aOverdueRentalContractDTO.theCustomerName + nl +
+			"Date:     " + aOverdueRentalContractDTO.theRentalStartTime + nl +
+			"Due:      " + aOverdueRentalContractDTO.theRentalDueTime + nl +
+			"Returned: " + aOverdueRentalContractDTO.theRentalEndTime + nl +
+			"Title:    " + aOverdueRentalContractDTO.theCDReleaseTitle + nl +
+			"ID:       " + aOverdueRentalContractDTO.theCDDiscPhysicalID + nl +
+			"Fee:      " + aOverdueRentalContractDTO.theOverdueFee + nl;
+
+	}
+
+}
+
+****ReportPlainTextFormat.java
+
+package com.samscdrental.reports;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public interface ReportPlainTextFormat
+{
+	String getReportString();
+}
+
+****Reports.java
+
+package com.samscdrental.reports;
+
+import java.io.*;
+
+import com.samscdrental.configuration.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.model.dto.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class Reports
+{
+
+	public static void printReport( ReportPlainTextFormat
+									aReportPlainTextFormat ) throws
+		PrinterFailureDeviation
+
+	{
+		FileWriter output = null;
+		try
+		{
+			output = new FileWriter( PRINTER_FILENAME );
+		}
+		catch ( IOException exception )
+		{
+			throw new PrinterFailureDeviation( ERROR_CANNOT_OPEN_PRINTER + " " +
+											   PRINTER_FILENAME +
+											   exception.getMessage() );
+		}
+		try
+		{
+			output.write( aReportPlainTextFormat.getReportString() );
+
+		}
+		catch ( IOException exception )
+		{
+			throw new PrinterFailureDeviation( ERROR_CANNOT_WRITE_TO_PRINTER +
+											   exception.getMessage() );
+		}
+
+		finally
+		{
+			try
+			{
+				output.close();
+			}
+			catch ( IOException exception )
+			{
+				throw new PrinterFailureDeviation( ERROR_CANNOT_CLOSE_PRINTER +
+					exception.getMessage() );
+			}
+		}
+
+	}
+
+	/**
+	 * printContractReport
+	 *
+	 * @param aRentalContractDTO RentalContractDTO
+	 */
+	public static ContractReportPlainTextFormat createContractReport(
+		RentalContractDTO
+		aRentalContractDTO )
+	{
+		ContractReportPlainTextFormat aContractReportPlainTextFormat
+			= new ContractReportPlainTextFormat( aRentalContractDTO );
+		return aContractReportPlainTextFormat;
+	}
+
+	public static OverdueRentalReportPlainTextFormat createOverdueRentalReport(
+		OverdueRentalDTO
+		aOverdueRentalDTO )
+	{
+		OverdueRentalReportPlainTextFormat aOverdueRentalReportPlainTextFormat
+			= new OverdueRentalReportPlainTextFormat( aOverdueRentalDTO );
+		return aOverdueRentalReportPlainTextFormat;
+	}
+
+	private Reports()
+	{
+
+	}
+
+	private static String getFilename()
+	{
+		Configuration configuration = Configuration.getInstance();
+		ReportConfiguration rc = configuration.getReportConfiguration();
+		return rc.printFilename;
+	}
+
+	private static String PRINTER_FILENAME = getFilename();
+
+	private static final String ERROR_CANNOT_OPEN_PRINTER =
+		"Cannot open  printer file";
+	private static final String ERROR_CANNOT_WRITE_TO_PRINTER =
+		"Cannot write to  printer file";
+	private static final String ERROR_CANNOT_CLOSE_PRINTER =
+		"Cannot close  printer file";
+
+}
+#### .\com\samscdrental\tests
+
+****CheckinCheckoutTests.java
+
+package com.samscdrental.tests;
+
+import com.samscdrental.controller.*;
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.failures.*;
+import com.samscdrental.model.adt.*;
+import com.samscdrental.model.dto.*;
+import junit.framework.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class CheckinCheckoutTests
+	extends TestCase
+{
+
+	public CheckinCheckoutTests()
+	{
+
+	}
+
+	public CheckinCheckoutTests( String name )
+	{
+		super( name );
+	}
+
+	/**
+	 * runNormalOperationTest
+	 */
+	public void testNormalOperation() throws Exception
+	{
+		try
+		{
+			PhysicalID aPhysicalID = new PhysicalID( "1234567890" );
+			CustomerID aCustomerID = new CustomerID( "ABCDEFGHIJ" );
+			RentalContractDTO rcdto = theRentalOperations.
+				checkoutCDDisc( aPhysicalID, aCustomerID );
+			// Check DTO values
+			assertEquals( "Rental fee incorrect", new Dollar( 3.0 ),
+						  rcdto.theRentalFee );
+			assertEquals( "Physical ID DTO incorrect", aPhysicalID,
+						  rcdto.theCDDiscPhysicalID );
+			Timestamp today = new Timestamp();
+			assertEquals( " Start date incorrect", today,
+						  rcdto.theRentalStartTime );
+			Timestamp due_date = today.addDays( 2 );
+			assertEquals( " End date incorrect ", due_date,
+						  rcdto.theRentalDueTime );
+			assertEquals( " Customer name incorrect", new Name( "Sammy" ),
+						  rcdto.theCustomerName );
+			assertEquals( "Title incorrect", new Name( "Really Good Title" ),
+						  rcdto.theCDReleaseTitle );
+			boolean flag = theRentalOperations.isCDDiscRented( aPhysicalID );
+			assertTrue( "CDDisc not rented", flag );
+			theRentalOperations.checkinCDDisc( aPhysicalID );
+		}
+		catch ( PhysicalIDFormatDeviation e )
+		{
+			fail(
+				"Physical id failed " + e.getMessage() );
+		}
+		catch ( CustomerIDFormatDeviation e )
+		{
+			fail( "Customer id failed " + e.getMessage() );
+		}
+		catch ( CheckOutDeviation e )
+		{
+			fail( "Checkout failed " + e.getMessage() );
+
+		}
+		catch ( CheckInDeviation e )
+		{
+			fail( "Checkin failed " + e.getMessage() );
+
+		}
+		catch ( LateReturnDeviation e )
+		{
+			fail( "Should not be late return " );
+		}
+	}
+
+	public void testLateReturn() throws Exception
+	{
+		PhysicalID aPhysicalID = null;
+		CustomerID aCustomerID = null;
+		try
+		{
+			aPhysicalID = new PhysicalID( "1234567890" );
+			aCustomerID = new CustomerID( "ABCDEFGHIJ" );
+			theRentalOperations.checkoutCDDisc( aPhysicalID, aCustomerID );
+			boolean flag = theRentalOperations.isCDDiscRented( aPhysicalID );
+			assertTrue( "CDDisc not rented", flag );
+			// What do I do - wait for two days and then test?
+			// I really want to perform this test at the command level
+			// Because Sam wants a dialog box put up.
+			theTestOnlyOperations.setStartTimeForRentalBackSomeDays(
+				aPhysicalID, 3 );
+			theRentalOperations.checkinCDDisc(
+				aPhysicalID );
+			fail( "Rental supposed to be overdue" );
+		}
+		catch ( PhysicalIDFormatDeviation e )
+		{
+			fail(
+				"Physical id failed " + e.getMessage() );
+		}
+		catch ( CustomerIDFormatDeviation e )
+		{
+			fail( "Customer id failed " + e.getMessage() );
+		}
+		catch ( CheckOutDeviation e )
+		{
+			fail( "Checkout failed " + e.getMessage() );
+
+		}
+		catch ( CheckInDeviation e )
+		{
+			fail( "Checkin failed " + e.getMessage() );
+
+		}
+		catch ( LateReturnDeviation e )
+		{
+			// Check the contents of the DTO
+			OverdueRentalDTO ordto = e.getOverdueRentalDTO();
+			Timestamp today = new Timestamp();
+			Timestamp start = today.addDays( -3 );
+			assertEquals( "Start date incorrect", start,
+						  ordto.theRentalStartTime );
+			Timestamp due_date = start.addDays( 2 );
+			assertEquals( "Due date incorrect", due_date,
+						  ordto.theRentalDueTime );
+			Timestamp end_date = today;
+			assertEquals( "End date incoorect", end_date,
+						  ordto.theRentalEndTime );
+			assertEquals( " Customer name incorrect", new Name( "Sammy" ),
+						  ordto.theCustomerName );
+			assertEquals( "Title incorrect", new Name( "Really Good Title" ),
+						  ordto.theCDReleaseTitle );
+			assertEquals( "Customer id incorrect", aCustomerID,
+						  ordto.theCustomerID );
+			assertEquals( "Physical id incorrect", aPhysicalID,
+						  ordto.theCDDiscPhysicalID );
+			;
+		}
+
+	}
+
+	public void testBadPhysicalID() throws Exception
+	{
+		try
+		{
+			new PhysicalID( "123456" );
+			fail( "Physical id supposed to fail" );
+		}
+		catch ( PhysicalIDFormatDeviation e )
+		{
+			;
+		}
+	}
+
+	public void testBadCustomerID() throws Exception
+	{
+		try
+		{
+			new CustomerID( "ABCDEFG" );
+			fail( "Customer id supposed to fail" );
+		}
+		catch ( CustomerIDFormatDeviation e )
+		{
+			;
+		}
+
+	}
+
+	public void testNonExistentPhysicalID() throws Exception
+	{
+		try
+		{
+			PhysicalID aPhysicalID = new PhysicalID( "1234567000" );
+			CustomerID aCustomerID = new CustomerID( "ABCDEFGHIJ" );
+			theRentalOperations.checkoutCDDisc( aPhysicalID,
+												aCustomerID );
+			fail( "Checkout should fail" );
+		}
+		catch ( PhysicalIDFormatDeviation e )
+		{
+			fail(
+				"Physical id failed " + e.getMessage() );
+		}
+		catch ( CustomerIDFormatDeviation e )
+		{
+			fail( "Customer id failed " + e.getMessage() );
+		}
+		catch ( CheckOutDeviation e )
+		{
+			;
+		}
+
+	}
+
+	public void testNonExistentCustomerID() throws Exception
+	{
+		try
+		{
+			PhysicalID aPhysicalID = new PhysicalID( "1234567890" );
+			CustomerID aCustomerID = new CustomerID( "ABCDEQQQQQ" );
+			theRentalOperations.checkoutCDDisc( aPhysicalID,
+												aCustomerID );
+			fail( "Checkout should fail" );
+		}
+		catch ( PhysicalIDFormatDeviation e )
+		{
+			fail(
+				"Physical id failed " + e.getMessage() );
+		}
+		catch ( CustomerIDFormatDeviation e )
+		{
+			fail( "Customer id failed " + e.getMessage() );
+		}
+		catch ( CheckOutDeviation e )
+		{
+			;
+		}
+	}
+
+	public void testAlreadyRented() throws Exception
+	{
+		try
+		{
+			PhysicalID aPhysicalID = new PhysicalID( "1234567890" );
+			CustomerID aCustomerID = new CustomerID( "ABCDEFGHIJ" );
+			try
+			{
+				theRentalOperations.checkoutCDDisc( aPhysicalID, aCustomerID );
+			}
+			catch ( CheckOutDeviation e )
+			{
+				fail( "Checkout failed " + e.getMessage() );
+
+			}
+
+			boolean flag = theRentalOperations.isCDDiscRented( aPhysicalID );
+			assertTrue( "CDDisc not rented", flag );
+
+			CustomerID anotherCustomerID = new CustomerID( "DEFGHIJKLM" );
+			theRentalOperations.checkoutCDDisc( aPhysicalID, anotherCustomerID );
+			fail( "Checkout was supposed to fail" );
+		}
+		catch ( PhysicalIDFormatDeviation e )
+		{
+			fail(
+				"Physical id failed " + e.getMessage() );
+		}
+		catch ( CustomerIDFormatDeviation e )
+		{
+			fail( "Customer id failed " + e.getMessage() );
+		}
+		catch ( CheckOutDeviation e )
+		{
+			;
+		}
+
+	}
+
+	public void testReturnNotRented() throws Exception
+	{
+		try
+		{
+			PhysicalID aPhysicalID = new PhysicalID( "1234567890" );
+			theRentalOperations.checkinCDDisc(
+				aPhysicalID );
+			fail( "Checkin suppose to fail" );
+		}
+		catch ( PhysicalIDFormatDeviation e )
+		{
+			fail(
+				"Physical id failed " + e.getMessage() );
+		}
+		catch ( CheckInDeviation e )
+		{
+			;
+		}
+
+	}
+
+	public static Test suite()
+	{
+		TestSuite suite = new TestSuite();
+		suite.addTest( new CheckinCheckoutTests( "testNormalOperation" ) );
+		suite.addTest( new CheckinCheckoutTests( "testLateReturn" ) );
+		suite.addTest( new CheckinCheckoutTests( "testBadPhysicalID" ) );
+		suite.addTest( new CheckinCheckoutTests( "testBadCustomerID" ) );
+		suite.addTest( new CheckinCheckoutTests( "testAlreadyRented" ) );
+		suite.addTest( new CheckinCheckoutTests( "testNonExistentPhysicalID" ) );
+		suite.addTest( new CheckinCheckoutTests( "testReturnNotRented" ) );
+
+		TestResult testResult = new TestResult();
+		suite.run( testResult );
+		return suite;
+	}
+
+	public static void main( String[] args )
+	{
+		setupFilenames( args );
+		StoreDataAccess.makeNew();
+		// If errors occur, then let them occur here
+		new CheckinCheckoutTests();
+		junit.textui.TestRunner.run( suite() );
+	}
+
+	/**
+	 * Sets up the fixture, for example, open a network connection.
+	 *
+	 * @throws Exception
+	 * @todo Implement this junit.framework.TestCase method
+	 */
+	protected void setUp() throws Exception
+	{
+		theRentalOperations = RentalOperations.getInstance();
+		theMaintenanceOperations =
+			MaintenanceOperations.getInstance();
+		theTestOnlyOperations = TestOnlyOperations.getInstance();
+
+		theTestOnlyOperations.collectionsClear();
+		theMaintenanceOperations.collectionsInitialize(
+			CUSTOMER_FILENAME,
+			CDDISC_FILENAME,
+			CDRELEASE_FILENAME );
+
+	}
+
+	/**
+	 * Tears down the fixture, for example, close a network connection.
+	 *
+	 * @throws Exception
+	 * @todo Implement this junit.framework.TestCase method
+	 */
+	protected void tearDown() throws Exception
+	{
+
+		theRentalOperations.dispose();
+
+	}
+
+	private RentalOperations theRentalOperations;
+	private MaintenanceOperations theMaintenanceOperations;
+	private TestOnlyOperations theTestOnlyOperations;
+
+	private static void setupFilenames( String[] args )
+	{
+		if ( args.length == 0 )
+		{
+			return;
+		}
+		if ( args.length < 3 )
+		{
+			System.out.println( "You must specify 3 filenames" +
+								"- CDRelease, CDDisc, Customer" );
+			return;
+		}
+		CDRELEASE_FILENAME = args[0];
+		CDDISC_FILENAME = args[1];
+		CUSTOMER_FILENAME = args[2];
+
+	}
+
+	private static String CDRELEASE_FILENAME =
+		"/temp/samscdrental/cdrelease.txt";
+	private static String CDDISC_FILENAME = "/temp/samscdrental/cddisc.txt";
+	private static String CUSTOMER_FILENAME = "/temp/samscdrental/customer.txt";
+
+}
+
+****TestOnlyOperations.java
+
+package com.samscdrental.tests;
+
+import com.samscdrental.dataaccess.*;
+import com.samscdrental.model.*;
+import com.samscdrental.model.adt.*;
+
+/**
+ * <p>Title: Sams CD Rental Store</p>
+ * <p>Description: </p>
+ * <p>Copyright: Copyright (c) 2004</p>
+ * <p>Company: </p>
+ * @author Ken Pugh
+ * @version 1.0
+ */
+
+public class TestOnlyOperations
+{
+	static TestOnlyOperations getInstance()
+	{
+		if ( theInstance == null )
+		{
+			theInstance = new TestOnlyOperations();
+		}
+		return theInstance;
+
+	}
+
+	void collectionsClear()
+	{
+		theCollections.theCDDiscDataAccess.removeAll_TestingOnly();
+		theCollections.theCustomerDataAccess.removeAll_TestingOnly();
+		theCollections.theCDReleaseDataAccess.removeAll_TestingOnly();
+	}
+
+	void setStartTimeForRentalBackSomeDays( PhysicalID aPhysicalID,
+											int days )
+
+	{
+		CDDisc aCDDisc = theCollections.theCDDiscDataAccess.findByPhysicalID(
+			aPhysicalID );
+		if ( aCDDisc != null )
+		{
+			Rental rental = aCDDisc.getRental();
+			Timestamp start = rental.getStartTime();
+			start = start.addDays( -days );
+			rental.setStartTime( start );
+		}
+
+	}
+
+	private StoreDataAccess theCollections = StoreDataAccess.
+		getInstance();
+
+	private TestOnlyOperations()
+	{
+	}
+
+	private static TestOnlyOperations theInstance = null;
+
+}
+#### .\junit
+#### .\junit\samples
+#### .\junit\samples\money
+
+****IMoney.java
+
+package junit.samples.money;
+
+/**
+ * The common interface for simple Monies and MoneyBags
+ *
+ */
+public interface IMoney {
+	/**
+	 * Adds a money to this money.
+	 */
+	public abstract IMoney add(IMoney m);
+	/**
+	 * Adds a simple Money to this money. This is a helper method for
+	 * implementing double dispatch
+	 */
+	public abstract IMoney addMoney(Money m);
+	/**
+	 * Adds a MoneyBag to this money. This is a helper method for
+	 * implementing double dispatch
+	 */
+	public abstract IMoney addMoneyBag(MoneyBag s);
+	/**
+	 * Tests whether this money is zero
+	 */
+	public abstract boolean isZero();
+	/**
+	 * Multiplies a money by the given factor.
+	 */
+	public abstract IMoney multiply(int factor);
+	/**
+	 * Negates this money.
+	 */
+	public abstract IMoney negate();
+	/**
+	 * Subtracts a money from this money.
+	 */
+	public abstract IMoney subtract(IMoney m);
+	/**
+	 * Append this to a MoneyBag m.
+	 */
+	public abstract void appendTo(MoneyBag m);
+}
+****Money.java
+
+package junit.samples.money;
+
+/**
+ * A simple Money.
+ *
+ */
+public class Money implements IMoney {
+
+	private int fAmount;
+	private String fCurrency;
+
+	/**
+	 * Constructs a money from the given amount and currency.
+	 */
+	public Money(int amount, String currency) {
+		fAmount= amount;
+		fCurrency= currency;
+	}
+	/**
+	 * Adds a money to this money. Forwards the request to the addMoney helper.
+	 */
+	public IMoney add(IMoney m) {
+		return m.addMoney(this);
+	}
+	public IMoney addMoney(Money m) {
+		if (m.currency().equals(currency()) )
+			return new Money(amount()+m.amount(), currency());
+		return MoneyBag.create(this, m);
+	}
+	public IMoney addMoneyBag(MoneyBag s) {
+		return s.addMoney(this);
+	}
+	public int amount() {
+		return fAmount;
+	}
+	public String currency() {
+		return fCurrency;
+	}
+	public boolean equals(Object anObject) {
+		if (isZero()) 
+			if (anObject instanceof IMoney)
+				return ((IMoney)anObject).isZero();
+		if (anObject instanceof Money) {
+			Money aMoney= (Money)anObject;
+			return aMoney.currency().equals(currency())
+							 && amount() == aMoney.amount();
+		}
+		return false;
+	}
+	public int hashCode() {
+		return fCurrency.hashCode()+fAmount;
+	}
+	public boolean isZero() {
+		return amount() == 0;
+	}
+	public IMoney multiply(int factor) {
+		return new Money(amount()*factor, currency());
+	}
+	public IMoney negate() {
+		return new Money(-amount(), currency());
+	}
+	public IMoney subtract(IMoney m) {
+		return add(m.negate());
+	}
+	public String toString() {
+		StringBuffer buffer = new StringBuffer();
+		buffer.append("["+amount()+" "+currency()+"]");
+		return buffer.toString();
+	}
+	public /*this makes no sense*/ void appendTo(MoneyBag m) {
+		m.appendMoney(this);
+	}
+}
+****MoneyBag.java
+
+package junit.samples.money;
+
+import java.util.*;
+
+/**
+ * A MoneyBag defers exchange rate conversions. For example adding 
+ * 12 Swiss Francs to 14 US Dollars is represented as a bag 
+ * containing the two Monies 12 CHF and 14 USD. Adding another
+ * 10 Swiss francs gives a bag with 22 CHF and 14 USD. Due to 
+ * the deferred exchange rate conversion we can later value a 
+ * MoneyBag with different exchange rates.
+ *
+ * A MoneyBag is represented as a list of Monies and provides 
+ * different constructors to create a MoneyBag. 
+ */ 
+class MoneyBag implements IMoney {
+	private Vector fMonies= new Vector(5);
+
+	static IMoney create(IMoney m1, IMoney m2) {
+		MoneyBag result= new MoneyBag();
+		m1.appendTo(result);
+		m2.appendTo(result);
+		return result.simplify();
+	}
+	public IMoney add(IMoney m) {
+		return m.addMoneyBag(this);
+	}
+	public IMoney addMoney(Money m) { 
+		return MoneyBag.create(m, this);
+	}
+	public IMoney addMoneyBag(MoneyBag s) {
+		return MoneyBag.create(s, this);
+	}
+	void appendBag(MoneyBag aBag) {
+		for (Enumeration e= aBag.fMonies.elements(); e.hasMoreElements(); )
+			appendMoney((Money)e.nextElement());
+	}
+	void appendMoney(Money aMoney) {
+		if (aMoney.isZero()) return;
+		IMoney old= findMoney(aMoney.currency());
+		if (old == null) {
+			fMonies.addElement(aMoney);
+			return;
+		}
+		fMonies.removeElement(old);
+		IMoney sum= old.add(aMoney);
+		if (sum.isZero()) 
+			return;
+		fMonies.addElement(sum);
+	}
+	public boolean equals(Object anObject) {
+		if (isZero())
+			if (anObject instanceof IMoney)
+				return ((IMoney)anObject).isZero();
+
+		if (anObject instanceof MoneyBag) {
+			MoneyBag aMoneyBag= (MoneyBag)anObject;
+			if (aMoneyBag.fMonies.size() != fMonies.size())
+				return false;
+
+		    for (Enumeration e= fMonies.elements(); e.hasMoreElements(); ) {
+		        Money m= (Money) e.nextElement();
+				if (!aMoneyBag.contains(m))
+					return false;
+			}
+			return true;
+		}
+		return false;
+	}
+	private Money findMoney(String currency) {
+		for (Enumeration e= fMonies.elements(); e.hasMoreElements(); ) {
+			Money m= (Money) e.nextElement();
+			if (m.currency().equals(currency))
+				return m;
+		}
+		return null;
+	}
+	private boolean contains(Money m) {
+		Money found= findMoney(m.currency());
+		if (found == null) return false;
+		return found.amount() == m.amount();
+	}
+	public int hashCode() {
+		int hash= 0;
+	    for (Enumeration e= fMonies.elements(); e.hasMoreElements(); ) {
+	        Object m= e.nextElement();
+			hash^= m.hashCode();
+		}
+	    return hash;
+	}
+	public boolean isZero() {
+		return fMonies.size() == 0;
+	}
+	public IMoney multiply(int factor) {
+		MoneyBag result= new MoneyBag();
+		if (factor != 0) {
+			for (Enumeration e= fMonies.elements(); e.hasMoreElements(); ) {
+				Money m= (Money) e.nextElement();
+				result.appendMoney((Money)m.multiply(factor));
+			}
+		}
+		return result;
+	}
+	public IMoney negate() {
+		MoneyBag result= new MoneyBag();
+	    for (Enumeration e= fMonies.elements(); e.hasMoreElements(); ) {
+	        Money m= (Money) e.nextElement();
+	        result.appendMoney((Money)m.negate());
+		}
+		return result;
+	}
+	private IMoney simplify() {
+		if (fMonies.size() == 1)
+			return (IMoney)fMonies.elements().nextElement();
+		return this;
+	}
+	public IMoney subtract(IMoney m) {
+		return add(m.negate());
+	}
+	public String toString() {
+		StringBuffer buffer = new StringBuffer();
+		buffer.append("{");
+		for (Enumeration e= fMonies.elements(); e.hasMoreElements(); )
+		    buffer.append(e.nextElement());
+		buffer.append("}");
+		return buffer.toString();
+	}
+	public void appendTo(MoneyBag m) {
+		m.appendBag(this);
+	}
+}
+****MoneyTest.java
+
+package junit.samples.money;
+
+import junit.framework.*;
+
+public class MoneyTest extends TestCase {
+	private Money f12CHF;
+	private Money f14CHF;
+	private Money f7USD;
+	private Money f21USD;
+
+	private IMoney fMB1;
+	private IMoney fMB2;
+
+	public static void main(String args[]) {
+		junit.textui.TestRunner.run(MoneyTest.class);
+	}
+	protected void setUp() {
+		f12CHF= new Money(12, "CHF");
+		f14CHF= new Money(14, "CHF");
+		f7USD= new Money( 7, "USD");
+		f21USD= new Money(21, "USD");
+
+		fMB1= MoneyBag.create(f12CHF, f7USD);
+		fMB2= MoneyBag.create(f14CHF, f21USD);
+	}
+	public void testBagMultiply() {
+		// {[12 CHF][7 USD]} *2 == {[24 CHF][14 USD]}
+		IMoney expected= MoneyBag.create(new Money(24, "CHF"), new Money(14, "USD"));
+		assertEquals(expected, fMB1.multiply(2)); 
+		assertEquals(fMB1, fMB1.multiply(1));
+		assertTrue(fMB1.multiply(0).isZero());
+	}
+	public void testBagNegate() {
+		// {[12 CHF][7 USD]} negate == {[-12 CHF][-7 USD]}
+		IMoney expected= MoneyBag.create(new Money(-12, "CHF"), new Money(-7, "USD"));
+		assertEquals(expected, fMB1.negate());
+	}
+	public void testBagSimpleAdd() {
+		// {[12 CHF][7 USD]} + [14 CHF] == {[26 CHF][7 USD]}
+		IMoney expected= MoneyBag.create(new Money(26, "CHF"), new Money(7, "USD"));
+		assertEquals(expected, fMB1.add(f14CHF));
+	}
+	public void testBagSubtract() {
+		// {[12 CHF][7 USD]} - {[14 CHF][21 USD] == {[-2 CHF][-14 USD]}
+		IMoney expected= MoneyBag.create(new Money(-2, "CHF"), new Money(-14, "USD"));
+		assertEquals(expected, fMB1.subtract(fMB2));
+	}
+	public void testBagSumAdd() {
+		// {[12 CHF][7 USD]} + {[14 CHF][21 USD]} == {[26 CHF][28 USD]}
+		IMoney expected= MoneyBag.create(new Money(26, "CHF"), new Money(28, "USD"));
+		assertEquals(expected, fMB1.add(fMB2));
+	}
+	public void testIsZero() {
+		assertTrue(fMB1.subtract(fMB1).isZero()); 
+		assertTrue(MoneyBag.create(new Money (0, "CHF"), new Money (0, "USD")).isZero());
+	}
+	public void testMixedSimpleAdd() {
+		// [12 CHF] + [7 USD] == {[12 CHF][7 USD]}
+		IMoney expected= MoneyBag.create(f12CHF, f7USD);
+		assertEquals(expected, f12CHF.add(f7USD));
+	}
+	public void testBagNotEquals() {
+		IMoney bag= MoneyBag.create(f12CHF, f7USD);
+		assertFalse(bag.equals(new Money(12, "DEM").add(f7USD)));
+	}
+	public void testMoneyBagEquals() {
+		assertTrue(!fMB1.equals(null)); 
+
+		assertEquals(fMB1, fMB1);
+		IMoney equal= MoneyBag.create(new Money(12, "CHF"), new Money(7, "USD"));
+		assertTrue(fMB1.equals(equal));
+		assertTrue(!fMB1.equals(f12CHF));
+		assertTrue(!f12CHF.equals(fMB1));
+		assertTrue(!fMB1.equals(fMB2));
+	}
+	public void testMoneyBagHash() {
+		IMoney equal= MoneyBag.create(new Money(12, "CHF"), new Money(7, "USD"));
+		assertEquals(fMB1.hashCode(), equal.hashCode());
+	}
+	public void testMoneyEquals() {
+		assertTrue(!f12CHF.equals(null)); 
+		Money equalMoney= new Money(12, "CHF");
+		assertEquals(f12CHF, f12CHF);
+		assertEquals(f12CHF, equalMoney);
+		assertEquals(f12CHF.hashCode(), equalMoney.hashCode());
+		assertTrue(!f12CHF.equals(f14CHF));
+	}
+	public void testMoneyHash() {
+		assertTrue(!f12CHF.equals(null)); 
+		Money equal= new Money(12, "CHF");
+		assertEquals(f12CHF.hashCode(), equal.hashCode());
+	}
+	public void testSimplify() {
+		IMoney money= MoneyBag.create(new Money(26, "CHF"), new Money(28, "CHF"));
+		assertEquals(new Money(54, "CHF"), money);
+	}
+	public void testNormalize2() {
+		// {[12 CHF][7 USD]} - [12 CHF] == [7 USD]
+		Money expected= new Money(7, "USD");
+		assertEquals(expected, fMB1.subtract(f12CHF));
+	}
+	public void testNormalize3() {
+		// {[12 CHF][7 USD]} - {[12 CHF][3 USD]} == [4 USD]
+		IMoney ms1= MoneyBag.create(new Money(12, "CHF"), new Money(3, "USD"));
+		Money expected= new Money(4, "USD");
+		assertEquals(expected, fMB1.subtract(ms1));
+	}
+	public void testNormalize4() {
+		// [12 CHF] - {[12 CHF][3 USD]} == [-3 USD]
+		IMoney ms1= MoneyBag.create(new Money(12, "CHF"), new Money(3, "USD"));
+		Money expected= new Money(-3, "USD");
+		assertEquals(expected, f12CHF.subtract(ms1));
+	}
+	public void testPrint() {
+		assertEquals("[12 CHF]", f12CHF.toString());
+	}
+	public void testSimpleAdd() {
+		// [12 CHF] + [14 CHF] == [26 CHF]
+		Money expected= new Money(26, "CHF");
+		assertEquals(expected, f12CHF.add(f14CHF));
+	}
+	public void testSimpleBagAdd() {
+		// [14 CHF] + {[12 CHF][7 USD]} == {[26 CHF][7 USD]}
+		IMoney expected= MoneyBag.create(new Money(26, "CHF"), new Money(7, "USD"));
+		assertEquals(expected, f14CHF.add(fMB1));
+	}
+	public void testSimpleMultiply() {
+		// [14 CHF] *2 == [28 CHF]
+		Money expected= new Money(28, "CHF");
+		assertEquals(expected, f14CHF.multiply(2));
+	}
+	public void testSimpleNegate() {
+		// [14 CHF] negate == [-14 CHF]
+		Money expected= new Money(-14, "CHF");
+		assertEquals(expected, f14CHF.negate());
+	}
+	public void testSimpleSubtract() {
+		// [14 CHF] - [12 CHF] == [2 CHF]
+		Money expected= new Money(2, "CHF");
+		assertEquals(expected, f14CHF.subtract(f12CHF));
+	}
+}
+****AllTests.java
+
+package junit.samples;
+
+import junit.framework.*;
+
+/**
+ * TestSuite that runs all the sample tests
+ *
+ */
+public class AllTests {
+
+	public static void main (String[] args) {
+		junit.textui.TestRunner.run (suite());
+	}
+	public static Test suite ( ) {
+		TestSuite suite= new TestSuite("All JUnit Tests");
+		suite.addTest(VectorTest.suite());
+		suite.addTest(new TestSuite(junit.samples.money.MoneyTest.class));
+		suite.addTest(junit.tests.AllTests.suite());
+	    return suite;
+	}
+}
+****SimpleTest.java
+
+package junit.samples;
+
+import junit.framework.*;
+
+/**
+ * Some simple tests.
+ *
+ */
+public class SimpleTest extends TestCase {
+	protected int fValue1;
+	protected int fValue2;
+
+	protected void setUp() {
+		fValue1= 2;
+		fValue2= 3;
+	}
+	public static Test suite() {
+
+		/*
+		 * the type safe way
+		 *
+		TestSuite suite= new TestSuite();
+		suite.addTest(
+			new SimpleTest("add") {
+				 protected void runTest() { testAdd(); }
+			}
+		);
+
+		suite.addTest(
+			new SimpleTest("testDivideByZero") {
+				 protected void runTest() { testDivideByZero(); }
+			}
+		);
+		return suite;
+		*/
+
+		/*
+		 * the dynamic way
+		 */
+		return new TestSuite(SimpleTest.class);
+	}
+	public void testAdd() {
+		double result= fValue1 + fValue2;
+		// forced failure result == 5
+		assertTrue(result == 6);
+	}
+	public void testDivideByZero() {
+		int zero= 0;
+		int result= 8/zero;
+	}
+	public void testEquals() {
+		assertEquals(12, 12);
+		assertEquals(12L, 12L);
+		assertEquals(new Long(12), new Long(12));
+
+		assertEquals("Size", 12, 13);
+		assertEquals("Capacity", 12.0, 11.99, 0.0);
+	}
+	public static void main (String[] args) {
+		junit.textui.TestRunner.run(suite());
+	}
+}
+****VectorTest.java
+
+package junit.samples;
+
+import junit.framework.*;
+import java.util.Vector;
+
+/**
+ * A sample test case, testing <code>java.util.Vector</code>.
+ *
+ */
+public class VectorTest extends TestCase {
+	protected Vector fEmpty;
+	protected Vector fFull;
+
+	public static void main (String[] args) {
+		junit.textui.TestRunner.run (suite());
+	}
+	protected void setUp() {
+		fEmpty= new Vector();
+		fFull= new Vector();
+		fFull.addElement(new Integer(1));
+		fFull.addElement(new Integer(2));
+		fFull.addElement(new Integer(3));
+	}
+	public static Test suite() {
+		return new TestSuite(VectorTest.class);
+	}
+	public void testCapacity() {
+		int size= fFull.size(); 
+		for (int i= 0; i < 100; i++)
+			fFull.addElement(new Integer(i));
+		assertTrue(fFull.size() == 100+size);
+	}
+	public void testClone() {
+		Vector clone= (Vector)fFull.clone(); 
+		assertTrue(clone.size() == fFull.size());
+		assertTrue(clone.contains(new Integer(1)));
+	}
+	public void testContains() {
+		assertTrue(fFull.contains(new Integer(1)));  
+		assertTrue(!fEmpty.contains(new Integer(1)));
+	}
+	public void testElementAt() {
+		Integer i= (Integer)fFull.elementAt(0);
+		assertTrue(i.intValue() == 1);
+
+		try { 
+			fFull.elementAt(fFull.size());
+		} catch (ArrayIndexOutOfBoundsException e) {
+			return;
+		}
+		fail("Should raise an ArrayIndexOutOfBoundsException");
+	}
+	public void testRemoveAll() {
+		fFull.removeAllElements();
+		fEmpty.removeAllElements();
+		assertTrue(fFull.isEmpty());
+		assertTrue(fEmpty.isEmpty()); 
+	}
+	public void testRemoveElement() {
+		fFull.removeElement(new Integer(3));
+		assertTrue(!fFull.contains(new Integer(3)) ); 
+	}
+}#### .\junit\tests
+#### .\junit\tests\extensions
+
+****ActiveTestTest.java
+
+package junit.tests.extensions;
+ 
+import junit.framework.*;
+import junit.extensions.*;
+ 
+/**
+ * Testing the ActiveTest support
+ */
+
+public class ActiveTestTest extends TestCase {
+
+	public static class SuccessTest extends TestCase {		
+		public void runTest() {
+		}
+	}
+		
+	public void testActiveTest() {		
+		Test test= createActiveTestSuite(); 
+		TestResult result= new TestResult();
+		test.run(result);
+		assertEquals(100, result.runCount());
+		assertEquals(0, result.failureCount());
+		assertEquals(0, result.errorCount());
+	}
+	
+	public void testActiveRepeatedTest() {		
+		Test test= new RepeatedTest(createActiveTestSuite(), 5);
+		TestResult result= new TestResult();
+		test.run(result);
+		assertEquals(500, result.runCount());
+		assertEquals(0, result.failureCount());
+		assertEquals(0, result.errorCount());
+	}
+	
+	public void testActiveRepeatedTest0() {		
+		Test test= new RepeatedTest(createActiveTestSuite(), 0);
+		TestResult result= new TestResult();
+		test.run(result);
+		assertEquals(0, result.runCount());
+		assertEquals(0, result.failureCount());
+		assertEquals(0, result.errorCount());
+	}
+
+	public void testActiveRepeatedTest1() {		
+		Test test= new RepeatedTest(createActiveTestSuite(), 1);
+		TestResult result= new TestResult();
+		test.run(result);
+		assertEquals(100, result.runCount());
+		assertEquals(0, result.failureCount());
+		assertEquals(0, result.errorCount());
+	}
+
+	ActiveTestSuite createActiveTestSuite() {
+		ActiveTestSuite suite= new ActiveTestSuite();
+		for (int i= 0; i < 100; i++) 
+			suite.addTest(new SuccessTest());
+		return suite;
+	}
+
+}
+****AllTests.java
+
+package junit.tests.extensions;
+
+import junit.framework.*;
+
+/**
+ * TestSuite that runs all the extension tests
+ *
+ */
+public class AllTests {
+
+	public static void main(String[] args) {
+		junit.textui.TestRunner.run(suite());
+	}
+	
+	public static Test suite() { // Collect tests manually because we have to test class collection code
+		TestSuite suite= new TestSuite("Framework Tests");
+		suite.addTestSuite(ExtensionTest.class);
+		suite.addTestSuite(ExceptionTestCaseTest.class);
+		suite.addTestSuite(ActiveTestTest.class);
+		suite.addTestSuite(RepeatedTestTest.class);
+		return suite;
+	}
+}
+****ExceptionTestCaseTest.java
+
+package junit.tests.extensions;
+
+import junit.framework.*;
+import junit.extensions.*;
+
+public class ExceptionTestCaseTest extends junit.framework.TestCase {
+
+	static public class ThrowExceptionTestCase extends ExceptionTestCase {
+		public ThrowExceptionTestCase(String name, Class exception) {
+			super(name, exception);
+		}
+		public void test() {
+			throw new IndexOutOfBoundsException();
+		}
+	}
+
+	static public class ThrowRuntimeExceptionTestCase extends ExceptionTestCase {
+		public ThrowRuntimeExceptionTestCase(String name, Class exception) {
+			super(name, exception);
+		}
+		public void test() {
+			throw new RuntimeException();
+		}
+	}
+
+	static public class ThrowNoExceptionTestCase extends ExceptionTestCase {
+		public ThrowNoExceptionTestCase(String name, Class exception) {
+			super(name, exception);
+		}
+		public void test() {
+		}
+	}
+
+	public void testExceptionSubclass() {
+		ExceptionTestCase test= new ThrowExceptionTestCase("test", IndexOutOfBoundsException.class);
+		TestResult result= test.run();
+		assertEquals(1, result.runCount());
+		assertTrue(result.wasSuccessful());
+	}
+	public void testExceptionTest() {
+		ExceptionTestCase test= new ThrowExceptionTestCase("test", IndexOutOfBoundsException.class);
+		TestResult result= test.run();
+		assertEquals(1, result.runCount());
+		assertTrue(result.wasSuccessful());
+	}
+	public void testFailure() {
+		ExceptionTestCase test= new ThrowRuntimeExceptionTestCase("test", IndexOutOfBoundsException.class);
+		TestResult result= test.run();
+		assertEquals(1, result.runCount());
+		assertEquals(1, result.errorCount());
+	}
+	public void testNoException() {
+		ExceptionTestCase test= new ThrowNoExceptionTestCase("test", Exception.class);
+		TestResult result= test.run();
+		assertEquals(1, result.runCount());
+		assertEquals(1, result.failureCount());
+	}
+	public void testWrongException() {
+		ExceptionTestCase test= new ThrowRuntimeExceptionTestCase("test", IndexOutOfBoundsException.class);
+		TestResult result= test.run();
+		assertEquals(1, result.runCount());
+		assertEquals(1, result.errorCount());
+	}
+}
+****ExtensionTest.java
+
+package junit.tests.extensions;
+
+import junit.framework.*;
+import junit.extensions.*;
+import junit.tests.WasRun;
+
+/**
+ * A test case testing the extensions to the testing framework.
+ *
+ */
+public class ExtensionTest extends TestCase {
+	static class TornDown extends TestSetup { 
+		boolean fTornDown= false;
+		
+		TornDown(Test test) {
+			super(test);
+		}
+		protected void tearDown() {
+			fTornDown= true;
+		}
+	}
+	public void testRunningErrorInTestSetup() {
+		TestCase test= new TestCase("failure") {
+			public void runTest() {
+				fail();
+			}
+		};
+
+		TestSetup wrapper= new TestSetup(test);
+
+		TestResult result= new TestResult();
+		wrapper.run(result);
+		assertTrue(!result.wasSuccessful());
+	}
+	public void testRunningErrorsInTestSetup() {
+		TestCase failure= new TestCase("failure") {
+			public void runTest() {
+				fail();
+			}
+		};
+
+		TestCase error= new TestCase("error") {
+			public void runTest() {
+				throw new Error();
+			}
+		};
+
+		TestSuite suite= new TestSuite();
+		suite.addTest(failure);
+		suite.addTest(error);
+		
+		TestSetup wrapper= new TestSetup(suite);
+
+		TestResult result= new TestResult();
+		wrapper.run(result);
+
+		assertEquals(1, result.failureCount());
+		assertEquals(1, result.errorCount());
+	}
+	public void testSetupErrorDontTearDown() {
+		WasRun test= new WasRun();
+
+		TornDown wrapper= new TornDown(test) {
+			public void setUp() {
+				fail();
+			}
+		};
+
+		TestResult result= new TestResult();
+		wrapper.run(result);
+
+		assertTrue(!wrapper.fTornDown);
+	}
+	public void testSetupErrorInTestSetup() {
+		WasRun test= new WasRun();
+
+		TestSetup wrapper= new TestSetup(test) {
+			public void setUp() {
+				fail();
+			}
+		};
+
+		TestResult result= new TestResult();
+		wrapper.run(result);
+
+		assertTrue(!test.fWasRun);
+		assertTrue(!result.wasSuccessful());
+	}
+}
+****RepeatedTestTest.java
+
+package junit.tests.extensions;
+
+import junit.framework.*;
+import junit.extensions.RepeatedTest;
+
+/**
+ * Testing the RepeatedTest support.
+ */
+
+public class RepeatedTestTest extends TestCase {
+	private TestSuite fSuite;
+
+	public static class SuccessTest extends TestCase {
+
+		public void runTest() {
+		}
+	}
+
+	public RepeatedTestTest(String name) {
+		super(name);
+		fSuite= new TestSuite();
+		fSuite.addTest(new SuccessTest());
+		fSuite.addTest(new SuccessTest());
+	}
+
+	public void testRepeatedOnce() {
+		Test test= new RepeatedTest(fSuite, 1);
+		assertEquals(2, test.countTestCases());
+		TestResult result= new TestResult();
+		test.run(result);
+		assertEquals(2, result.runCount());
+	}
+
+ 	public void testRepeatedMoreThanOnce() {
+		Test test= new RepeatedTest(fSuite, 3);
+		assertEquals(6, test.countTestCases());
+		TestResult result= new TestResult();
+		test.run(result);
+		assertEquals(6, result.runCount());
+	}
+
+ 	public void testRepeatedZero() {
+		Test test= new RepeatedTest(fSuite, 0);
+		assertEquals(0, test.countTestCases());
+		TestResult result= new TestResult();
+		test.run(result);
+		assertEquals(0, result.runCount());
+	}
+
+ 	public void testRepeatedNegative() {
+ 		try {
+			new RepeatedTest(fSuite, -1);
+ 		} catch (IllegalArgumentException e) {
+ 			return;
+ 		}
+ 		fail("Should throw an IllegalArgumentException");
+	}
+}#### .\junit\tests\framework
+
+****AllTests.java
+
+package junit.tests.framework;
+
+import junit.framework.*;
+
+/**
+ * TestSuite that runs all the sample tests
+ *
+ */
+public class AllTests {
+
+	public static void main(String[] args) {
+		junit.textui.TestRunner.run(suite());
+	}
+	
+	public static Test suite() {
+		TestSuite suite= new TestSuite("Framework Tests");
+		suite.addTestSuite(TestCaseTest.class);
+		suite.addTest(SuiteTest.suite()); // Tests suite building, so can't use automatic test extraction 
+		suite.addTestSuite(TestListenerTest.class);
+		suite.addTestSuite(AssertTest.class);
+		suite.addTestSuite(TestImplementorTest.class);
+		suite.addTestSuite(NoArgTestCaseTest.class);
+		suite.addTestSuite(ComparisonFailureTest.class);
+		suite.addTestSuite(DoublePrecisionAssertTest.class);
+		return suite;
+	}
+	
+}
+****AssertTest.java
+
+package junit.tests.framework;
+
+import junit.framework.AssertionFailedError;
+import junit.framework.ComparisonFailure;
+import junit.framework.TestCase;
+
+public class AssertTest extends TestCase {
+
+	/* In the tests that follow, we can't use standard formatting
+	 * for exception tests:
+	 *     try {
+	 *         somethingThatShouldThrow();
+	 *         fail();
+	 *     catch (AssertionFailedError e) {
+	 *     }
+	 * because fail() would never be reported.
+	 */
+	public void testFail() {
+		// Also, we are testing fail, so we can't rely on fail() working.
+		// We have to throw the exception manually, .
+		try {
+			fail();
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		throw new AssertionFailedError();
+	}
+
+	public void testAssertEquals() {
+		Object o= new Object();
+		assertEquals(o, o);
+		try {
+			assertEquals(new Object(), new Object());
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertEqualsNull() {
+		assertEquals(null, null);
+	}
+
+	public void testAssertStringEquals() {
+		assertEquals("a", "a");
+	}
+
+	public void testAssertNullNotEqualsString() {
+		try {
+			assertEquals(null, "foo");
+			fail();
+		} catch (ComparisonFailure e) {
+		}
+	}
+
+	public void testAssertStringNotEqualsNull() {
+		try {
+			assertEquals("foo", null);
+			fail();
+		} catch (ComparisonFailure e) {
+			e.getMessage(); // why no assertion?
+		}
+	}
+
+	public void testAssertNullNotEqualsNull() {
+		try {
+			assertEquals(null, new Object());
+		} catch (AssertionFailedError e) {
+			e.getMessage(); // why no assertion?
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertNull() {
+		assertNull(null);
+		try {
+			assertNull(new Object());
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertNotNull() {
+		assertNotNull(new Object());
+		try {
+			assertNotNull(null);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertTrue() {
+		assertTrue(true);
+		try {
+			assertTrue(false);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertFalse() {
+		assertFalse(false);
+		try {
+			assertFalse(true);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertSame() {
+		Object o= new Object();
+		assertSame(o, o);
+		try {
+			assertSame(new Integer(1), new Integer(1));
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertNotSame() {
+		assertNotSame(new Integer(1), null);
+		assertNotSame(null, new Integer(1));
+		assertNotSame(new Integer(1), new Integer(1));
+		try {
+			Integer obj= new Integer(1);
+			assertNotSame(obj, obj);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertNotSameFailsNull() {
+		try {
+			assertNotSame(null, null);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+}
+****ComparisonFailureTest.java
+
+package junit.tests.framework;
+
+import junit.framework.ComparisonFailure;
+import junit.framework.TestCase;
+
+public class ComparisonFailureTest extends TestCase {
+
+	public void testComparisonErrorMessage() {
+		ComparisonFailure failure= new ComparisonFailure("a", "b", "c");
+		assertEquals("a expected:<b> but was:<c>", failure.getMessage());
+	}
+
+	public void testComparisonErrorStartSame() {
+		ComparisonFailure failure= new ComparisonFailure(null, "ba", "bc");
+		assertEquals("expected:<...a> but was:<...c>", failure.getMessage());
+	}
+
+	public void testComparisonErrorEndSame() {
+		ComparisonFailure failure= new ComparisonFailure(null, "ab", "cb");
+		assertEquals("expected:<a...> but was:<c...>", failure.getMessage());
+	}
+
+	public void testComparisonErrorSame() {
+		ComparisonFailure failure= new ComparisonFailure(null, "ab", "ab");
+		assertEquals("expected:<ab> but was:<ab>", failure.getMessage());
+	}
+
+	public void testComparisonErrorStartAndEndSame() {
+		ComparisonFailure failure= new ComparisonFailure(null, "abc", "adc");
+		assertEquals("expected:<...b...> but was:<...d...>", failure.getMessage());
+	}
+
+	public void testComparisonErrorStartSameComplete() {
+		ComparisonFailure failure= new ComparisonFailure(null, "ab", "abc");
+		assertEquals("expected:<...> but was:<...c>", failure.getMessage());
+	}
+
+	public void testComparisonErrorEndSameComplete() {
+		ComparisonFailure failure= new ComparisonFailure(null, "bc", "abc");
+		assertEquals("expected:<...> but was:<a...>", failure.getMessage());
+	}
+
+	public void testComparisonErrorOverlapingMatches() {
+		ComparisonFailure failure= new ComparisonFailure(null, "abc", "abbc");
+		assertEquals("expected:<......> but was:<...b...>", failure.getMessage());
+	}
+
+	public void testComparisonErrorOverlapingMatches2() {
+		ComparisonFailure failure= new ComparisonFailure(null, "abcdde", "abcde");
+		assertEquals("expected:<...d...> but was:<......>", failure.getMessage());
+	}
+
+	public void testComparisonErrorWithActualNull() {
+		ComparisonFailure failure= new ComparisonFailure(null, "a", null);
+		assertEquals("expected:<a> but was:<null>", failure.getMessage());
+	}
+	
+	public void testComparisonErrorWithExpectedNull() {
+		ComparisonFailure failure= new ComparisonFailure(null, null, "a");
+		assertEquals("expected:<null> but was:<a>", failure.getMessage());
+	}
+}
+
+****DoublePrecisionAssertTest.java
+
+package junit.tests.framework;
+
+import junit.framework.AssertionFailedError;
+import junit.framework.TestCase;
+
+public class DoublePrecisionAssertTest extends TestCase {
+
+	/**
+		 * Test for the special Double.NaN value.
+		 */
+	public void testAssertEqualsNaNFails() {
+		try {
+			assertEquals(1.234, Double.NaN, 0.0);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertNaNEqualsFails() {
+		try {
+			assertEquals(Double.NaN, 1.234, 0.0);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertNaNEqualsNaNFails() {
+		try {
+			assertEquals(Double.NaN, Double.NaN, 0.0);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertPosInfinityNotEqualsNegInfinity() {
+		try {
+			assertEquals(Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertPosInfinityNotEquals() {
+		try {
+			assertEquals(Double.POSITIVE_INFINITY, 1.23, 0.0);
+		} catch (AssertionFailedError e) {
+			return;
+		}
+		fail();
+	}
+
+	public void testAssertPosInfinityEqualsInfinity() {
+		assertEquals(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, 0.0);
+	}
+
+	public void testAssertNegInfinityEqualsInfinity() {
+		assertEquals(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0);
+	}
+
+}
+
+****Failure.java
+
+package junit.tests.framework;
+
+import junit.framework.*;
+
+/**
+ * A test case testing the testing framework.
+ *
+ */
+public class Failure extends TestCase {
+	public void runTest() {
+		fail();
+	}
+}
+****InheritedTestCase.java
+
+package junit.tests.framework;
+
+/**
+ * Test class used in SuiteTest
+ */
+public class InheritedTestCase extends OneTestCase { 
+	public void test2() {
+	}
+}
+****NoArgTestCaseTest.java
+
+
+package junit.tests.framework;
+
+import junit.framework.TestCase;
+
+public class NoArgTestCaseTest extends TestCase {
+	public void testNothing() { // If this compiles, the no arg ctor is there
+	}
+}
+
+****NoTestCaseClass.java
+
+package junit.tests.framework;
+
+/**
+ * Test class used in SuiteTest
+ */
+
+public class NoTestCaseClass extends Object {
+	public void testSuccess() {
+	}
+}
+****NoTestCases.java
+
+package junit.tests.framework;
+
+/**
+ * Test class used in SuiteTest
+ */
+import junit.framework.TestCase;
+
+public class NoTestCases extends TestCase {
+	public void noTestCase() {
+	}
+}
+****NotPublicTestCase.java
+
+package junit.tests.framework;
+
+/**
+ * Test class used in SuiteTest
+ */
+import junit.framework.TestCase;
+
+public class NotPublicTestCase extends TestCase {
+	protected void testNotPublic() {
+	}
+	public void testPublic() {
+	}
+}
+****NotVoidTestCase.java
+
+package junit.tests.framework;
+
+/**
+ * Test class used in SuiteTest
+ */
+import junit.framework.TestCase;
+
+public class NotVoidTestCase extends TestCase {
+	public int testNotVoid() {
+		return 1;
+	}
+	public void testVoid() {
+	}
+}
+****OneTestCase.java
+
+package junit.tests.framework;
+
+/**
+ * Test class used in SuiteTest
+ */
+import junit.framework.TestCase;
+
+public class OneTestCase extends TestCase {
+	public void noTestCase() {
+	}
+	public void testCase() {
+	}
+	public void testCase(int arg) {
+	}
+}
+****OverrideTestCase.java
+
+package junit.tests.framework;
+
+/**
+ * Test class used in SuiteTest
+ */
+public class OverrideTestCase extends OneTestCase {
+	public void testCase() {
+	}
+}
+****Success.java
+
+package junit.tests.framework;
+
+import junit.framework.*;
+
+/**
+ * A test case testing the testing framework.
+ *
+ */
+public class Success extends TestCase {
+	
+	public void runTest() {
+	}
+	
+	public void testSuccess() {
+	}
+}
+****SuiteTest.java
+
+package junit.tests.framework;
+
+import junit.framework.*;
+
+/**
+ * A fixture for testing the "auto" test suite feature.
+ *
+ */
+public class SuiteTest extends TestCase {
+	protected TestResult fResult;
+	public SuiteTest(String name) {
+		super(name);
+	}
+	protected void setUp() {
+		fResult= new TestResult(); 
+	}
+	public static Test suite() {
+		TestSuite suite= new TestSuite("Suite Tests");
+		// build the suite manually, because some of the suites are testing
+		// the functionality that automatically builds suites
+		suite.addTest(new SuiteTest("testNoTestCaseClass"));
+		suite.addTest(new SuiteTest("testNoTestCases"));
+		suite.addTest(new SuiteTest("testOneTestCase"));
+		suite.addTest(new SuiteTest("testNotPublicTestCase"));
+		suite.addTest(new SuiteTest("testNotVoidTestCase"));
+		suite.addTest(new SuiteTest("testNotExistingTestCase"));
+		suite.addTest(new SuiteTest("testInheritedTests"));
+		suite.addTest(new SuiteTest("testShadowedTests"));
+		suite.addTest(new SuiteTest("testAddTestSuite"));
+		
+		return suite;
+	}
+	public void testInheritedTests() {
+		TestSuite suite= new TestSuite(InheritedTestCase.class);
+		suite.run(fResult);
+		assertTrue(fResult.wasSuccessful());
+		assertEquals(2, fResult.runCount());
+	}
+	public void testNoTestCaseClass() {
+		Test t= new TestSuite(NoTestCaseClass.class);
+		t.run(fResult);
+		assertEquals(1, fResult.runCount());  // warning test
+		assertTrue(! fResult.wasSuccessful());
+	}
+	public void testNoTestCases() {
+		Test t= new TestSuite(NoTestCases.class);
+		t.run(fResult);
+		assertTrue(fResult.runCount() == 1);  // warning test
+		assertTrue(fResult.failureCount() == 1);
+		assertTrue(! fResult.wasSuccessful());
+	}
+	public void testNotExistingTestCase() {
+		Test t= new SuiteTest("notExistingMethod");
+		t.run(fResult);
+		assertTrue(fResult.runCount() == 1);  
+		assertTrue(fResult.failureCount() == 1);
+		assertTrue(fResult.errorCount() == 0);
+	}
+	public void testNotPublicTestCase() {
+		TestSuite suite= new TestSuite(NotPublicTestCase.class);
+		// 1 public test case + 1 warning for the non-public test case
+		assertEquals(2, suite.countTestCases());
+	}
+	public void testNotVoidTestCase() {
+		TestSuite suite= new TestSuite(NotVoidTestCase.class);
+		assertTrue(suite.countTestCases() == 1);
+	}
+	public void testOneTestCase() {
+		Test t= new TestSuite(OneTestCase.class);
+		t.run(fResult);
+		assertTrue(fResult.runCount() == 1);  
+		assertTrue(fResult.failureCount() == 0);
+		assertTrue(fResult.errorCount() == 0);
+		assertTrue(fResult.wasSuccessful());
+	}
+	public void testShadowedTests() {
+		TestSuite suite= new TestSuite(OverrideTestCase.class);
+		suite.run(fResult);
+		assertEquals(1, fResult.runCount());
+	}
+	public void testAddTestSuite() {
+		TestSuite suite= new TestSuite();
+		suite.addTestSuite(OneTestCase.class);
+		suite.run(fResult);
+		assertEquals(1, fResult.runCount());
+	}
+}
+****TestCaseTest.java
+
+package junit.tests.framework;
+
+import junit.framework.*;
+import junit.tests.WasRun;
+
+/**
+ * A test case testing the testing framework.
+ *
+ */
+public class TestCaseTest extends TestCase {
+	
+	static class TornDown extends TestCase {
+		boolean fTornDown= false;
+		
+		protected void tearDown() {
+			fTornDown= true;
+		}
+		protected void runTest() {
+			throw new Error();
+		}
+	}
+
+	public void testCaseToString() {
+		// This test wins the award for twisted snake tail eating while
+		// writing self tests. And you thought those weird anonymous
+		// inner classes were bad...
+		assertEquals("testCaseToString(junit.tests.framework.TestCaseTest)", toString());
+	}
+	public void testError() {
+		TestCase error= new TestCase("error") {
+			protected void runTest() {
+				throw new Error();
+			}
+		};
+		verifyError(error);
+	}
+	public void testRunAndTearDownFails() {
+		TornDown fails= new TornDown() {
+			protected void tearDown() {
+				super.tearDown();
+				throw new Error();
+			}
+			protected void runTest() {
+				throw new Error();
+			}
+		};
+		verifyError(fails);
+		assertTrue(fails.fTornDown);
+	}
+	public void testSetupFails() {
+		TestCase fails= new TestCase("success") {
+			protected void setUp() {
+				throw new Error();
+			}
+			protected void runTest() {
+			}
+		};
+		verifyError(fails);
+	}
+	public void testSuccess() {
+		TestCase success= new TestCase("success") {
+			protected void runTest() {
+			}
+		};
+		verifySuccess(success);
+	}
+	public void testFailure() {
+		TestCase failure= new TestCase("failure") {
+			protected void runTest() {
+				fail();
+			}
+		};
+		verifyFailure(failure);
+	}
+
+	public void testTearDownAfterError() {
+		TornDown fails= new TornDown();
+		verifyError(fails);
+		assertTrue(fails.fTornDown);
+	}
+	
+	public void testTearDownFails() {
+		TestCase fails= new TestCase("success") {
+			protected void tearDown() {
+				throw new Error();
+			}
+			protected void runTest() {
+			}
+		};
+		verifyError(fails);
+	}
+	public void testTearDownSetupFails() {
+		TornDown fails= new TornDown() {
+			protected void setUp() {
+				throw new Error();
+			}
+		};
+		verifyError(fails);
+		assertTrue(!fails.fTornDown);
+	}
+	public void testWasRun() {
+		WasRun test= new WasRun(); 
+		test.run();
+		assertTrue(test.fWasRun);
+	}
+	public void testExceptionRunningAndTearDown() {
+		// This test documents the current behavior. With 1.4, we should
+		// wrap the exception thrown while running with the exception thrown
+		// while tearing down
+		Test t= new TornDown() {
+			public void tearDown() {
+				throw new Error("tearDown");
+			}
+		};
+		TestResult result= new TestResult();
+		t.run(result);
+		TestFailure failure= (TestFailure) result.errors().nextElement();
+		assertEquals("tearDown", failure.thrownException().getMessage());
+	}
+	
+	public void testNoArgTestCasePasses() {
+		Test t= new TestSuite(NoArgTestCaseTest.class);
+		TestResult result= new TestResult();
+		t.run(result);
+		assertTrue(result.runCount() == 1);
+		assertTrue(result.failureCount() == 0);
+		assertTrue(result.errorCount() == 0);
+	}
+	
+	public void testNamelessTestCase() {
+		TestCase t= new TestCase() {};
+		try {
+			t.run();
+			fail();
+		} catch (AssertionFailedError e) {
+		}
+	}
+	
+	void verifyError(TestCase test) {
+		TestResult result= test.run();
+		assertTrue(result.runCount() == 1);
+		assertTrue(result.failureCount() == 0);
+		assertTrue(result.errorCount() == 1);
+	}
+	void verifyFailure(TestCase test) {
+		TestResult result= test.run();
+		assertTrue(result.runCount() == 1);
+		assertTrue(result.failureCount() == 1);
+		assertTrue(result.errorCount() == 0);
+	}
+	void verifySuccess(TestCase test) {
+		TestResult result= test.run();
+		assertTrue(result.runCount() == 1);
+		assertTrue(result.failureCount() == 0);
+		assertTrue(result.errorCount() == 0);
+	}
+}
+****TestImplementorTest.java
+
+package junit.tests.framework;
+
+import junit.framework.*;
+
+/**
+ * Test an implementor of junit.framework.Test other than TestCase or TestSuite
+ */
+public class TestImplementorTest extends TestCase {
+	public static class DoubleTestCase implements Test {
+		private TestCase fTestCase;
+		
+		public DoubleTestCase(TestCase testCase) {
+			fTestCase= testCase;
+		}
+		
+		public int countTestCases() {
+			return 2;
+		}
+		
+		public void run(TestResult result) {
+			result.startTest(this);
+			Protectable p= new Protectable() {
+				public void protect() throws Throwable {
+					fTestCase.runBare();
+					fTestCase.runBare();
+				}
+			};
+			result.runProtected(this, p);
+			result.endTest(this);
+		}
+	}
+	
+	private DoubleTestCase fTest;
+	
+	public TestImplementorTest() {
+		TestCase testCase= new TestCase() {
+			public void runTest() {
+			}
+		};
+		fTest= new DoubleTestCase(testCase);
+	}
+	
+	public void testSuccessfulRun() {
+		TestResult result= new TestResult();
+		fTest.run(result);
+		assertEquals(fTest.countTestCases(), result.runCount());
+		assertEquals(0, result.errorCount());
+		assertEquals(0, result.failureCount());
+	}
+}
+
+****TestListenerTest.java
+
+package junit.tests.framework;
+
+/**
+ * Test class used in SuiteTest
+ */
+import junit.framework.*;
+
+public class TestListenerTest extends TestCase implements TestListener {
+	private TestResult fResult;
+	private int fStartCount;
+	private int fEndCount;
+	private int fFailureCount;
+	private int fErrorCount;
+
+	public void addError(Test test, Throwable t) {
+		fErrorCount++;
+	}
+	public void addFailure(Test test, AssertionFailedError t) {
+		fFailureCount++;
+	}
+	public void endTest(Test test) {
+		fEndCount++;
+	}
+	protected void setUp() {
+		fResult= new TestResult();
+		fResult.addListener(this);
+	
+		fStartCount= 0;
+		fEndCount= 0;
+		fFailureCount= 0;
+	}
+	public void startTest(Test test) {
+		fStartCount++;
+	}
+	public void testError() {
+		TestCase test= new TestCase("noop") {
+			public void runTest() {
+				throw new Error();
+			}
+		};
+		test.run(fResult);
+		assertEquals(1, fErrorCount);
+		assertEquals(1, fEndCount);
+	}
+	public void testFailure() {
+		TestCase test= new TestCase("noop") {
+			public void runTest() {
+				fail();
+			}
+		};
+		test.run(fResult);
+		assertEquals(1, fFailureCount);
+		assertEquals(1, fEndCount);
+	}
+	public void testStartStop() {
+		TestCase test= new TestCase("noop") {
+			public void runTest() {
+			}
+		};
+		test.run(fResult);
+		assertEquals(1, fStartCount);
+		assertEquals(1, fEndCount);
+	}
+}#### .\junit\tests\runner
+
+****AllTests.java
+
+package junit.tests.runner;
+
+import junit.framework.*;
+import junit.runner.BaseTestRunner;
+
+/**
+ * TestSuite that runs all the sample tests
+ *
+ */
+public class AllTests {
+
+	public static void main(String[] args) {
+		junit.textui.TestRunner.run(suite());
+	}
+	
+	public static Test suite() { // Collect tests manually because we have to test class collection code
+		TestSuite suite= new TestSuite("Framework Tests");
+		suite.addTestSuite(StackFilterTest.class);
+		suite.addTestSuite(SorterTest.class);
+		suite.addTestSuite(SimpleTestCollectorTest.class);
+		suite.addTestSuite(BaseTestRunnerTest.class);
+		suite.addTestSuite(TextFeedbackTest.class);
+		if (!BaseTestRunner.inVAJava()) {
+			suite.addTestSuite(TextRunnerTest.class);
+			if (!isJDK11())
+				suite.addTest(new TestSuite(TestCaseClassLoaderTest.class));
+		}
+		return suite;
+	}
+	
+	static boolean isJDK11() {
+		String version= System.getProperty("java.version");
+		return version.startsWith("1.1");
+	}
+}
+****BaseTestRunnerTest.java
+
+
+package junit.tests.runner;
+
+import junit.framework.Test;
+import junit.framework.TestCase;
+import junit.runner.BaseTestRunner;
+
+public class BaseTestRunnerTest extends TestCase {
+	
+	public class MockRunner extends BaseTestRunner {
+		protected void runFailed(String message) {
+		}
+
+		public void testEnded(String testName) {
+		}
+
+		public void testFailed(int status, Test test, Throwable t) {
+		}
+
+		public void testStarted(String testName) {
+		}
+	}
+	
+	public static class NonStatic {
+		public Test suite() {
+			return null;
+		}
+	}
+
+	
+	public void testInvokeNonStaticSuite() {
+		BaseTestRunner runner= new MockRunner();
+		runner.getTest("junit.tests.runner.BaseTestRunnerTest$NonStatic"); // Used to throw NullPointerException
+	}
+}
+
+****ClassLoaderTest.java
+
+package junit.tests.runner;
+
+/**
+ * Test class used in TestTestCaseClassLoader
+ */
+import junit.framework.*;
+
+public class ClassLoaderTest extends Assert {
+	public ClassLoaderTest() {
+	}
+	public void verify() {
+		verifyApplicationClassLoadedByTestLoader();
+		verifySystemClassNotLoadedByTestLoader();
+	}
+	private boolean isTestCaseClassLoader(ClassLoader cl) {
+		return (cl != null && cl.getClass().getName().equals(junit.runner.TestCaseClassLoader.class.getName()));
+	}
+	private void verifyApplicationClassLoadedByTestLoader() {
+		assertTrue(isTestCaseClassLoader(getClass().getClassLoader()));
+	} 
+	private void verifySystemClassNotLoadedByTestLoader() {
+		assertTrue(!isTestCaseClassLoader(Object.class.getClassLoader()));
+		assertTrue(!isTestCaseClassLoader(TestCase.class.getClassLoader()));
+	}
+}
+****LoadedFromJar.java
+
+package junit.tests.runner;
+
+/**
+ * Test class used in TestTestCaseClassLoader
+ */
+import junit.framework.*;
+
+public class LoadedFromJar extends Assert {
+	public void verify() {
+		verifyApplicationClassLoadedByTestLoader();
+	}
+	private boolean isTestCaseClassLoader(ClassLoader cl) {
+		return (cl != null && cl.getClass().getName().equals(junit.runner.TestCaseClassLoader.class.getName()));
+	}
+	private void verifyApplicationClassLoadedByTestLoader() {
+		assertTrue(isTestCaseClassLoader(getClass().getClassLoader()));
+	} 
+}
+****SimpleTestCollectorTest.java
+
+package junit.tests.runner;
+
+import junit.framework.TestCase;
+import junit.runner.SimpleTestCollector;
+
+public class SimpleTestCollectorTest extends TestCase {
+	
+	public void testMissingDirectory() {
+		SimpleTestCollector collector= new SimpleTestCollector();
+		assertFalse(collector.collectFilesInPath("foobar").elements().hasMoreElements());
+	}
+
+}
+
+
+****SorterTest.java
+
+package junit.tests.runner;
+
+import java.util.Vector;
+
+import junit.framework.*;
+import junit.runner.Sorter;
+
+public class SorterTest extends TestCase {
+	
+	static class Swapper implements Sorter.Swapper {
+		public void swap(Vector values, int left, int right) {
+			Object tmp= values.elementAt(left); 
+			values.setElementAt(values.elementAt(right), left); 
+			values.setElementAt(tmp, right);
+		}
+	}
+	
+	public void testSort() throws Exception {
+		Vector v= new Vector();
+		v.addElement("c");
+		v.addElement("b");
+		v.addElement("a");
+		Sorter.sortStrings(v, 0, v.size()-1, new Swapper());
+		assertEquals(v.elementAt(0), "a");
+		assertEquals(v.elementAt(1), "b");
+		assertEquals(v.elementAt(2), "c");
+	}
+}
+****StackFilterTest.java
+
+package junit.tests.runner;
+
+import java.io.*;
+import junit.framework.*;
+import junit.runner.BaseTestRunner;
+
+public class StackFilterTest extends TestCase {
+	String fFiltered;
+	String fUnfiltered;
+	
+	protected void setUp() {
+		StringWriter swin= new StringWriter();
+		PrintWriter pwin= new PrintWriter(swin);
+		pwin.println("junit.framework.AssertionFailedError");
+		pwin.println("	at junit.framework.Assert.fail(Assert.java:144)");
+		pwin.println("	at junit.framework.Assert.assert(Assert.java:19)");
+		pwin.println("	at junit.framework.Assert.assert(Assert.java:26)");
+		pwin.println("	at MyTest.f(MyTest.java:13)");
+		pwin.println("	at MyTest.testStackTrace(MyTest.java:8)");
+		pwin.println("	at java.lang.reflect.Method.invoke(Native Method)");
+		pwin.println("	at junit.framework.TestCase.runTest(TestCase.java:156)");
+		pwin.println("	at junit.framework.TestCase.runBare(TestCase.java:130)");
+		pwin.println("	at junit.framework.TestResult$1.protect(TestResult.java:100)");
+		pwin.println("	at junit.framework.TestResult.runProtected(TestResult.java:118)");
+		pwin.println("	at junit.framework.TestResult.run(TestResult.java:103)");
+		pwin.println("	at junit.framework.TestCase.run(TestCase.java:121)");
+		pwin.println("	at junit.framework.TestSuite.runTest(TestSuite.java:157)");
+		pwin.println("	at junit.framework.TestSuite.run(TestSuite.java, Compiled Code)");
+		pwin.println("	at junit.swingui.TestRunner$17.run(TestRunner.java:669)");
+		fUnfiltered= swin.toString();
+
+		StringWriter swout= new StringWriter();
+		PrintWriter pwout= new PrintWriter(swout);
+		pwout.println("junit.framework.AssertionFailedError");
+		pwout.println("	at MyTest.f(MyTest.java:13)");
+		pwout.println("	at MyTest.testStackTrace(MyTest.java:8)");
+		fFiltered= swout.toString();
+	}
+		
+	public void testFilter() {
+		assertEquals(fFiltered, BaseTestRunner.getFilteredTrace(fUnfiltered));
+	}
+}
+****TestCaseClassLoaderTest.java
+
+package junit.tests.runner;
+
+import java.lang.reflect.*;
+import junit.framework.*;
+import junit.runner.*;
+import java.net.URL;
+
+/**
+ * A TestCase for testing the TestCaseClassLoader
+ *
+ */
+public class TestCaseClassLoaderTest extends TestCase {
+
+	public void testClassLoading() throws Exception {
+		TestCaseClassLoader loader= new TestCaseClassLoader();
+		Class loadedClass= loader.loadClass("junit.tests.runner.ClassLoaderTest", true);
+		Object o= loadedClass.newInstance();
+		//
+		// Invoke the assertClassLoaders method via reflection.
+		// We use reflection since the class is loaded by
+		// another class loader and we can't do a successfull downcast to
+		// ClassLoaderTestCase.
+		//
+		Method method= loadedClass.getDeclaredMethod("verify", new Class[0]);
+		method.invoke(o, new Class[0]);
+	}
+
+	public void testJarClassLoading() throws Exception {
+		URL url= getClass().getResource("test.jar");
+		assertNotNull("Cannot find test.jar", url);
+		String path= url.getFile();
+		TestCaseClassLoader loader= new TestCaseClassLoader(path);
+		Class loadedClass= loader.loadClass("junit.tests.runner.LoadedFromJar", true);
+		Object o= loadedClass.newInstance();
+		//
+		// Invoke the assertClassLoaders method via reflection.
+		// We use reflection since the class is loaded by
+		// another class loader and we can't do a successfull downcast to
+		// ClassLoaderTestCase.
+		//
+		Method method= loadedClass.getDeclaredMethod("verify", new Class[0]);
+		method.invoke(o, new Class[0]);
+	}
+}
+****TextFeedbackTest.java
+
+
+package junit.tests.runner;
+
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+
+import junit.framework.AssertionFailedError;
+import junit.framework.TestCase;
+import junit.framework.TestResult;
+import junit.framework.TestSuite;
+import junit.textui.ResultPrinter;
+import junit.textui.TestRunner;
+
+public class TextFeedbackTest extends TestCase {
+	OutputStream output;
+	TestRunner runner;
+	
+	class TestResultPrinter extends ResultPrinter {
+		TestResultPrinter(PrintStream writer) {
+			super(writer);
+		}
+		
+		/* Spoof printing time so the tests are deterministic
+		 */
+		protected String elapsedTimeAsString(long runTime) {
+			return "0";
+		}
+	}
+	
+	public static void main(String[] args) {
+		TestRunner.run(TextFeedbackTest.class);
+	}
+	
+	public void setUp() {
+		output= new ByteArrayOutputStream();
+		runner= new TestRunner(new TestResultPrinter(new PrintStream(output)));
+	}
+	
+	public void testEmptySuite() {
+		String expected= expected(new String[]{"", "Time: 0", "", "OK (0 tests)", ""});
+		runner.doRun(new TestSuite());
+		assertEquals(expected.toString(), output.toString());
+	}
+
+	
+	public void testOneTest() {
+		String expected= expected(new String[]{".", "Time: 0", "", "OK (1 test)", ""});
+		TestSuite suite = new TestSuite();
+		suite.addTest(new TestCase() { public void runTest() {}});
+		runner.doRun(suite);
+		assertEquals(expected.toString(), output.toString());
+	}
+	
+	public void testTwoTests() {
+		String expected= expected(new String[]{"..", "Time: 0", "", "OK (2 tests)", ""});
+		TestSuite suite = new TestSuite();
+		suite.addTest(new TestCase() { public void runTest() {}});
+		suite.addTest(new TestCase() { public void runTest() {}});
+		runner.doRun(suite);
+		assertEquals(expected.toString(), output.toString());
+	}
+
+	public void testFailure() {
+		String expected= expected(new String[]{".F", "Time: 0", "Failures here", "", "FAILURES!!!", "Tests run: 1,  Failures: 1,  Errors: 0", ""});
+		ResultPrinter printer= new TestResultPrinter(new PrintStream(output)) {
+			public void printFailures(TestResult result) {
+				getWriter().println("Failures here");
+			}
+		};
+		runner.setPrinter(printer);
+		TestSuite suite = new TestSuite();
+		suite.addTest(new TestCase() { public void runTest() {throw new AssertionFailedError();}});
+		runner.doRun(suite);
+		assertEquals(expected.toString(), output.toString());
+	}
+	
+	public void testError() {
+		String expected= expected(new String[]{".E", "Time: 0", "Errors here", "", "FAILURES!!!", "Tests run: 1,  Failures: 0,  Errors: 1", ""});
+		ResultPrinter printer= new TestResultPrinter(new PrintStream(output)) {
+			public void printErrors(TestResult result) {
+				getWriter().println("Errors here");
+			}
+		};
+		runner.setPrinter(printer);
+		TestSuite suite = new TestSuite();
+		suite.addTest(new TestCase() { public void runTest() throws Exception {throw new Exception();}});
+		runner.doRun(suite);
+		assertEquals(expected.toString(), output.toString());
+	}
+	
+	private String expected(String[] lines) {
+		OutputStream expected= new ByteArrayOutputStream();
+		PrintStream expectedWriter= new PrintStream(expected);
+		for (int i= 0; i < lines.length; i++)
+			expectedWriter.println(lines[i]);
+		return expected.toString(); 
+	}
+
+}
+
+****TextRunnerTest.java
+
+package junit.tests.runner;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+
+import junit.framework.TestCase;
+import junit.framework.TestResult;
+import junit.framework.TestSuite;
+
+public class TextRunnerTest extends TestCase {
+	
+	public void testFailure() throws Exception {
+		execTest("junit.tests.framework.Failure", false);
+	}
+
+	public void testSuccess() throws Exception {
+		execTest("junit.tests.framework.Success", true);
+	}
+
+	public void testError() throws Exception {
+		execTest("junit.tests.BogusDude", false);
+	}
+	
+	void execTest(String testClass, boolean success) throws Exception {
+		String java= System.getProperty("java.home")+File.separator+"bin"+File.separator+"java";
+		String cp= System.getProperty("java.class.path");
+		//use -classpath for JDK 1.1.7 compatibility
+		String [] cmd= { java, "-classpath", cp, "junit.textui.TestRunner", testClass}; 
+		Process p= Runtime.getRuntime().exec(cmd);
+		InputStream i= p.getInputStream();
+		int b;
+		while((b= i.read()) != -1) 
+			; //System.out.write(b); 
+		assertTrue((p.waitFor() == 0) == success);
+		if (success)
+			assertEquals(junit.textui.TestRunner.SUCCESS_EXIT, p.exitValue());
+		else
+			assertEquals(junit.textui.TestRunner.FAILURE_EXIT, p.exitValue());
+	}
+	
+	public void testRunReturnsResult() {
+		PrintStream oldOut= System.out;
+		System.setOut(new PrintStream (
+			new OutputStream() {
+				public void write(int arg0) throws IOException {
+				}
+			}
+		));
+		try {
+			TestResult result= junit.textui.TestRunner.run(new TestSuite());
+			assertTrue(result.wasSuccessful());
+		} finally {
+			System.setOut(oldOut);
+		}
+	}
+		
+
+}
+****AllTests.java
+
+package junit.tests;
+
+import junit.framework.*;
+
+/**
+ * TestSuite that runs all the JUnit tests
+ *
+ */
+public class AllTests {
+
+	public static void main(String[] args) {
+		junit.textui.TestRunner.run(suite());
+	}
+	
+	public static Test suite() {
+		TestSuite suite= new TestSuite("Framework Tests");
+		suite.addTest(junit.tests.framework.AllTests.suite());
+		suite.addTest(junit.tests.runner.AllTests.suite());
+		suite.addTest(junit.tests.extensions.AllTests.suite());
+		return suite;
+	}
+}
+****WasRun.java
+
+package junit.tests;
+
+import junit.framework.*;
+
+/**
+ * A helper test case for testing whether the testing method
+ * is run.
+ */
+public class WasRun extends TestCase {
+	public boolean fWasRun= false;
+		protected void runTest() {
+			fWasRun= true;
+		}
+}

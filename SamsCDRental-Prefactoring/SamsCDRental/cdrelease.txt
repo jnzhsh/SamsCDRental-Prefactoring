@@ -1,0 +1,3 @@
+UPC123456789|NewRelease|Really Good Title
+UPC987654321|GoldenOldie|Revolution
+UPC111111111|Regular|With God on Your Side

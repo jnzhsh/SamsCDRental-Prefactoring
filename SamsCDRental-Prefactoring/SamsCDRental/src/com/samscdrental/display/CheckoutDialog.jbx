@@ -1,0 +1,14 @@
+[PropertyInfo]
+cancelButton,JToggleButton,false,false, , ,false,<default>
+doneButton,JToggleButton,false,false, , ,false,<default>
+jLabel1,JLabel,false,false, , ,false,<default>
+jLabel2,JLabel,false,false, , ,false,<default>
+jLabel3,JLabel,false,false, , ,false,<default>
+theCDDiscPhysicalIDField,PhysicalIDTextField,false,false, , ,false,<default>
+theCustomerIDField,CustomerIDTextField,false,false, , ,false,<default>
+theRentalOperations,RentalOperations,false,false, , ,false,<default>
+[IconNames]
+
+
+
+

@@ -1,0 +1,12 @@
+[PropertyInfo]
+CancelButton,JToggleButton,false,false, , ,false,<default>
+CDDiscIDFiled,JTextField,false,false, , ,false,<default>
+DoneButton,JToggleButton,false,false, , ,false,<default>
+jLabel1,JLabel,false,false, , ,false,<default>
+jLabel2,JLabel,false,false, , ,false,<default>
+jPanel1,JPanel,false,false, , ,false,<default>
+[IconNames]
+
+
+
+
